@@ -14,6 +14,10 @@ models, or services are included. Visual inspiration does not imply affiliation.
 
 ## Install on Windows
 
+**Current status: source preview only. No Windows installer is published yet.**
+Use the [source build guide](freedomeditor/DEVELOPMENT.md) for now. The simple
+installation steps below apply once a tested installer release is available.
+
 Supported release target: **Windows 10 (2004+) and Windows 11, x64**.
 
 1. Open [Releases](https://github.com/HrithikRaj1999/FreedomEditor/releases).
@@ -25,7 +29,6 @@ need Node.js, a compiler, or a separate Electron installation: the runtime is
 bundled, just as it is in VS Code. Python execution still needs a Python runtime;
 TypeScript projects need their usual Node.js/project dependencies.
 
-**Release status: source preview only. No Windows installer is published yet.**
 The installer build and full GUI smoke test are still in validation. If a release
 contains only source archives, it is not a ready-to-install application. Unsigned preview
 builds can trigger Windows SmartScreen; verify the published SHA-256 checksum

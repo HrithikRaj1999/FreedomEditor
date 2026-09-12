@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Windows x64, Git, Python, and Visual Studio 2022 Build Tools with the C++ desktop workload and Windows SDK.
+- Windows x64, Git with Git LFS, Python, and Visual Studio 2022 Build Tools with the C++ desktop workload and Windows SDK.
 - Node.js at least the version in `.nvmrc`, within the same major version, with npm below version 13.
 - Substantial free disk space for source, native dependencies, Electron, and side-by-side builds.
 
@@ -11,6 +11,14 @@ FreedomEditor setup EXE. Install privileged prerequisites yourself; build script
 do not request elevation or collect passwords.
 
 ## Build and Launch
+
+Get the source in PowerShell:
+
+```powershell
+git clone --branch freedomeditor --single-branch https://github.com/HrithikRaj1999/FreedomEditor.git
+cd FreedomEditor
+git lfs pull
+```
 
 Run in PowerShell from the repository root:
 
