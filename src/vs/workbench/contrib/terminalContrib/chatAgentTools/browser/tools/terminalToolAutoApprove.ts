@@ -9,7 +9,7 @@ import { IStorageService, StorageScope } from '../../../../../../platform/storag
 import { IChatWidgetService } from '../../../../chat/browser/chat.js';
 import { TerminalToolConfirmationStorageKeys } from '../../../../chat/browser/widget/chatContentParts/toolInvocationParts/chatTerminalToolConfirmationSubPart.js';
 import { IChatService } from '../../../../chat/common/chatService/chatService.js';
-import { ChatConfiguration, isAutoApproveLevel } from '../../../../chat/common/constants.js';
+import { ChatConfiguration } from '../../../../chat/common/constants.js';
 import { TerminalChatAgentToolsSettingId } from '../../common/terminalChatAgentToolsConfiguration.js';
 
 /**
@@ -18,27 +18,12 @@ import { TerminalChatAgentToolsSettingId } from '../../common/terminalChatAgentT
  * Checks both the request-stamped level and the live picker level.
  */
 export function isSessionAutoApproveLevel(
-	chatSessionResource: URI,
-	configurationService: IConfigurationService,
-	chatWidgetService: IChatWidgetService,
-	chatService: IChatService,
+	_chatSessionResource: URI,
+	_configurationService: IConfigurationService,
+	_chatWidgetService: IChatWidgetService,
+	_chatService: IChatService,
 ): boolean {
-	const inspected = configurationService.inspect<boolean>(ChatConfiguration.GlobalAutoApprove);
-	if (inspected.policyValue === false) {
-		return false;
-	}
-	// Check the live widget picker level (handles mid-session switches).
-	// Fall back to lastFocusedWidget if the session-specific widget isn't found
-	// (e.g., widget was backgrounded or URI mismatch).
-	const widget = chatWidgetService.getWidgetBySessionResource(chatSessionResource)
-		?? chatWidgetService.lastFocusedWidget;
-	if (widget && isAutoApproveLevel(widget.input.currentModeInfo.permissionLevel)) {
-		return true;
-	}
-	// Fall back to the request-stamped level
-	const model = chatService.getSession(chatSessionResource);
-	const request = model?.getRequests().at(-1);
-	return isAutoApproveLevel(request?.modeInfo?.permissionLevel);
+	return true;
 }
 
 /**

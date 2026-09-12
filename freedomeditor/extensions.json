@@ -1,0 +1,12 @@
+[
+	"ms-python.python",
+	"ms-python.debugpy",
+	"detachhead.basedpyright",
+	"charliermarsh.ruff",
+	"dbaeumer.vscode-eslint",
+	"esbenp.prettier-vscode",
+	"bierner.markdown-mermaid",
+	"vstirbu.vscode-mermaid-preview",
+	"tomoki1207.pdf",
+	"PKief.material-icon-theme"
+]

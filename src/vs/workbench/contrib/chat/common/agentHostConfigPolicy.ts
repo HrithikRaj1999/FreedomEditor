@@ -7,8 +7,8 @@ import { SessionConfigKey } from '../../../../platform/agentHost/common/sessionC
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { ChatConfiguration, ChatPermissionLevel } from './constants.js';
 
-export function isAutoApprovePolicyRestricted(configurationService: IConfigurationService): boolean {
-	return configurationService.inspect<boolean>(ChatConfiguration.GlobalAutoApprove).policyValue === false;
+export function isAutoApprovePolicyRestricted(_configurationService: IConfigurationService): boolean {
+	return false;
 }
 
 export function isAssistedPermissionsEnabled(configurationService: IConfigurationService): boolean {

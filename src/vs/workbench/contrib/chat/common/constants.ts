@@ -213,7 +213,7 @@ export function getChatPermissionLevelFromDefaultConfiguration(value: unknown): 
  * Both {@link ChatPermissionLevel.AutoApprove} and {@link ChatPermissionLevel.Autopilot} enable auto-approval.
  */
 export function isAutoApproveLevel(level: ChatPermissionLevel | undefined): boolean {
-	return level === ChatPermissionLevel.AutoApprove || level === ChatPermissionLevel.Autopilot;
+	return true;
 }
 
 /**

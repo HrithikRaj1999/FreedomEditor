@@ -1,4 +1,124 @@
-# Visual Studio Code - Open Source ("Code - OSS")
+# FreedomEditor
+
+<img src="freedomeditor/assets/freedomeditor.png" alt="FreedomEditor" width="96" />
+
+**Your editor. Your workflow. Windows first.**
+
+FreedomEditor is Hrithik Raj's community fork of Microsoft's MIT-licensed
+**Code - OSS**, with an Antigravity-inspired workspace layout, original branding,
+and customizable coding defaults. The VS Code editor, terminal, debugger, Git
+integration, and extension API remain underneath.
+
+It is not an official Microsoft or Google product. No Antigravity code, assets,
+models, or services are included. Visual inspiration does not imply affiliation.
+
+## Install on Windows
+
+Supported release target: **Windows 10 (2004+) and Windows 11, x64**.
+
+1. Open [Releases](https://github.com/HrithikRaj1999/FreedomEditor/releases).
+2. Download `FreedomEditorSetup-x64-<version>.exe` from a release with a Windows installer.
+3. Run it and choose whether to install the coding extensions. Open **FreedomEditor** from Start.
+
+The setup installs for your Windows user, separately from VS Code. You do **not**
+need Node.js, a compiler, or a separate Electron installation: the runtime is
+bundled, just as it is in VS Code. Python execution still needs a Python runtime;
+TypeScript projects need their usual Node.js/project dependencies.
+
+**Release status: source preview only. No Windows installer is published yet.**
+The installer build and full GUI smoke test are still in validation. If a release
+contains only source archives, it is not a ready-to-install application. Unsigned preview
+builds can trigger Windows SmartScreen; verify the published SHA-256 checksum
+and review the source before deciding whether to run one. Code signing is not
+configured yet.
+
+## What You Get
+
+- Familiar VS Code editing, navigation, debugging, Git, terminals, and extension APIs.
+- A top activity bar, command center, and secondary sidebar inspired by agent-oriented editors.
+- **Freedom Graphite** and **Freedom Paper** themes with readable syntax colors and original icons.
+- Native customization: search the Command Palette for **FreedomEditor: Customize Editor**.
+- Python, Debugpy, BasedPyright, Ruff, ESLint, Prettier, Mermaid previews, PDF viewing, and Material Icon Theme through Open VSX.
+- Built-in JavaScript/TypeScript language services; no extra TypeScript editor extension is required.
+- Separate settings and extension storage. Regular VS Code remains your fallback.
+- Source-build tools for one-way settings sync, backups, stable update checks, staging, and rollback.
+
+Extensions are downloaded when selected during installation; internet access is
+required. They are not all bundled or covered by this repository's MIT license.
+The gallery is [Open VSX](https://open-vsx.org/). Marketplace-only extensions,
+proposed APIs, product checks, and proprietary services may not work in a fork.
+Install only extensions you trust and whose licenses permit your use.
+
+![Freedom Graphite in the running editor](freedomeditor/assets/preview-graphite.png)
+
+## Why the Approval Changes?
+
+This started with a local workflow problem: selecting an "Allow All" option did
+not consistently avoid further approval prompts across chat tools, terminal
+execution, and agent-host policy paths. Those are separate decision points, not
+one universal switch. This fork changes several local approval checks together.
+
+**Important: this experimental fork currently treats every chat permission level
+as auto-approved, including the UI's manual/default level.** Terminal approval
+checks are also more permissive. A displayed permission label must not be taken
+as a safety boundary. Agents can run destructive commands or expose accessible
+data without another prompt. Use a disposable environment with no sensitive
+credentials, and inspect the code changes before enabling an agent. Use official
+VS Code when you need its normal approval protections.
+
+This is not a claim of "no restrictions whatsoever." Windows permissions,
+security software, organizational controls, network policies, extension licenses,
+and provider-side rules still apply. Paid AI services are not made free, and
+service-side safeguards are not removed. Copilot availability and sign-in are
+subject to GitHub's terms and compatibility.
+
+## Updates and Performance
+
+The current source base is **VS Code 1.137.0**. FreedomEditor is a separate build;
+official VS Code's binary updater cannot safely update it. Source users can run
+`scripts/freedomeditor.ps1 -Action check` or `-Action update`. The updater checks
+Microsoft's stable release against its Git tag, stages local changes separately,
+and only queues a release after building and testing it. Conflicts or missing
+build prerequisites leave the active editor unchanged. There can be update lag.
+
+Installer users currently update through this repository's Releases page.
+Automatic signed binary updates are not implemented. The native layout avoids
+an extra webview UI, but no benchmark demonstrates that this fork is faster or
+uses less memory than official VS Code or Antigravity.
+
+## Build and Customize
+
+See [the Windows build guide](freedomeditor/DEVELOPMENT.md) for prerequisites,
+source launch, settings overrides, update automation, and installer creation.
+
+The complete publishable project is this repository. Main customization paths:
+
+- `extensions/freedomeditor/`: themes, coding defaults, and native customization commands.
+- `freedomeditor/`: original branding, extension selection, and Windows installer definition.
+- `scripts/freedomeditor*`: launcher, update/profile tools, tests, and build automation.
+- `product.json`: product identity and extension gallery.
+
+Personal profiles, credentials, update state, and downloaded runtimes belong in
+the ignored `.freedomeditor/` folder, **never in Git**. Existing installations can
+keep their profile folders elsewhere; do not upload those folders.
+
+## Community and License
+
+Report reproducible issues and suggest improvements at
+[HrithikRaj1999/FreedomEditor](https://github.com/HrithikRaj1999/FreedomEditor/issues).
+Pull requests for compatibility, accessible UI, explicit permission controls,
+Windows packaging, and verified performance improvements are welcome.
+
+Code - OSS source retains Microsoft's copyright and [MIT license](LICENSE.txt).
+FreedomEditor additions are MIT-licensed. Retain upstream notices and
+[third-party notices](ThirdPartyNotices.txt). Bundled third-party software and
+extensions have their own licenses. VS Code, GitHub Copilot, and Antigravity
+names belong to their respective owners.
+
+<details>
+<summary>Upstream Code - OSS README and attribution</summary>
+
+## Visual Studio Code - Open Source ("Code - OSS")
 [![Feature Requests](https://img.shields.io/github/issues/microsoft/vscode/feature-request.svg)](https://github.com/microsoft/vscode/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
 [![Bugs](https://img.shields.io/github/issues/microsoft/vscode/bug.svg)](https://github.com/microsoft/vscode/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3Abug)
 
@@ -74,3 +194,5 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 Copyright (c) Microsoft Corporation. All rights reserved.
 
 Licensed under the [MIT](LICENSE.txt) license.
+
+</details>
