@@ -1,5 +1,7 @@
 # FreedomEditor
 
+[Windows Installation Guide](freedomeditor/DEVELOPMENT.md) | [Current Status](#install-on-windows)
+
 <img src="freedomeditor/assets/freedomeditor.png" alt="FreedomEditor" width="96" />
 
 **Your editor. Your workflow. Windows first.**
@@ -15,25 +17,22 @@ models, or services are included. Visual inspiration does not imply affiliation.
 ## Install on Windows
 
 **Current status: source preview only. No Windows installer is published yet.**
-Use the [source build guide](freedomeditor/DEVELOPMENT.md) for now. The simple
-installation steps below apply once a tested installer release is available.
+There is no `FreedomEditorSetup.exe` to download from this repository or its
+Releases page. Packaging stopped because the build machine is missing the
+Windows SDK's SignTool. Full GUI validation is also unfinished.
 
-Supported release target: **Windows 10 (2004+) and Windows 11, x64**.
+The [Windows Installation Guide](freedomeditor/DEVELOPMENT.md) explains the
+current source-build option and the missing prerequisites. Installing Microsoft
+Build Tools installs **build prerequisites only**, not FreedomEditor or VS Code.
 
-1. Open [Releases](https://github.com/HrithikRaj1999/FreedomEditor/releases).
-2. Download `FreedomEditorSetup-x64-<version>.exe` from a release with a Windows installer.
-3. Run it and choose whether to install the coding extensions. Open **FreedomEditor** from Start.
+The intended one-click installer targets **Windows 10 (2004+) and Windows 11,
+x64** and will be listed under
+[Releases](https://github.com/HrithikRaj1999/FreedomEditor/releases) after packaging
+and validation succeed. It will bundle Electron; end users will not need the
+build tools or a separate Electron installation. Python execution will still
+need a Python runtime, and TypeScript projects need their normal dependencies.
 
-The setup installs for your Windows user, separately from VS Code. You do **not**
-need Node.js, a compiler, or a separate Electron installation: the runtime is
-bundled, just as it is in VS Code. Python execution still needs a Python runtime;
-TypeScript projects need their usual Node.js/project dependencies.
-
-The installer build and full GUI smoke test are still in validation. If a release
-contains only source archives, it is not a ready-to-install application. Unsigned preview
-builds can trigger Windows SmartScreen; verify the published SHA-256 checksum
-and review the source before deciding whether to run one. Code signing is not
-configured yet.
+GitHub's source ZIP is not an installer. Code signing is not configured yet.
 
 ## What You Get
 
@@ -84,7 +83,7 @@ Microsoft's stable release against its Git tag, stages local changes separately,
 and only queues a release after building and testing it. Conflicts or missing
 build prerequisites leave the active editor unchanged. There can be update lag.
 
-Installer users currently update through this repository's Releases page.
+Future installer releases will be distributed through this repository's Releases page.
 Automatic signed binary updates are not implemented. The native layout avoids
 an extra webview UI, but no benchmark demonstrates that this fork is faster or
 uses less memory than official VS Code or Antigravity.

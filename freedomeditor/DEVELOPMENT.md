@@ -1,4 +1,30 @@
-# Windows Development
+# Windows Installation Guide
+
+## Current Availability
+
+**There is no published FreedomEditor setup EXE yet.** The public repository
+currently provides source code and build scripts, not a ready-to-install Windows
+application. The source ZIP is not an installer.
+
+The instructions below are for building and running FreedomEditor from source.
+If you only want a one-click installation, a validated installer must be built
+and uploaded to [GitHub Releases](https://github.com/HrithikRaj1999/FreedomEditor/releases)
+first. That installer is intended to bundle Electron and keep FreedomEditor
+separate from official VS Code.
+
+## Install the Build Tools
+
+On the machine that will build FreedomEditor, open **PowerShell as Administrator**
+and run:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --source winget --accept-source-agreements --accept-package-agreements --override "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+**This installs Microsoft's C++ build tools and Windows SDK. It does not install
+FreedomEditor or VS Code.** Let the installer finish before continuing. Installing
+these system prerequisites needs your Windows administrator approval; do not
+share your administrator password in chat.
 
 ## Prerequisites
 
