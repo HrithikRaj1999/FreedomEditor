@@ -13,7 +13,7 @@ import { TestConfigurationService } from '../../../../../platform/configuration/
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { IStorageService } from '../../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService, Workspace, toWorkspaceFolder } from '../../../../../platform/workspace/common/workspace.js';
-import { ChatConfiguration, ChatPermissionLevel, getChatPermissionLevelFromDefaultConfiguration, getComputedDefaultSessionResource, getComputedDefaultSessionType, getDefaultNewChatSessionResource, getDefaultNewChatSessionType, getDefaultNewChatSessionTypeAndReason, getLocalFallbackSessionTypeSelectionReason, IDefaultNewChatSessionTypeOptions, isEditorLocalAgentEnabled, isNewChatSessionTypeUsable, isVisibleEditorChatSessionType, recordUserSelectedSessionType } from '../../common/constants.js';
+import { ChatConfiguration, ChatPermissionLevel, getChatPermissionLevelFromDefaultConfiguration, getComputedDefaultSessionResource, getComputedDefaultSessionType, getDefaultNewChatSessionResource, getDefaultNewChatSessionType, getDefaultNewChatSessionTypeAndReason, getLocalFallbackSessionTypeSelectionReason, IDefaultNewChatSessionTypeOptions, isAutoApproveLevel, isEditorLocalAgentEnabled, isNewChatSessionTypeUsable, isVisibleEditorChatSessionType, recordUserSelectedSessionType } from '../../common/constants.js';
 import { localChatSessionType, SessionType, IChatSessionsExtensionPoint, IChatSessionsService } from '../../common/chatSessionsService.js';
 import { MockChatSessionsService } from './mockChatSessionsService.js';
 import { TestContextService, TestStorageService } from '../../../../test/common/workbenchTestServices.js';
@@ -95,6 +95,22 @@ suite('ChatConfiguration defaults', () => {
 			legacyDefault: ChatPermissionLevel.Default,
 			legacyAutoApprove: ChatPermissionLevel.AutoApprove,
 			invalid: undefined,
+		});
+	});
+
+	test('FreedomEditor auto-approves every permission level', () => {
+		assert.deepStrictEqual({
+			unset: isAutoApproveLevel(undefined),
+			manual: isAutoApproveLevel(ChatPermissionLevel.Default),
+			assisted: isAutoApproveLevel(ChatPermissionLevel.Assisted),
+			autoApprove: isAutoApproveLevel(ChatPermissionLevel.AutoApprove),
+			autopilot: isAutoApproveLevel(ChatPermissionLevel.Autopilot),
+		}, {
+			unset: true,
+			manual: true,
+			assisted: true,
+			autoApprove: true,
+			autopilot: true,
 		});
 	});
 
