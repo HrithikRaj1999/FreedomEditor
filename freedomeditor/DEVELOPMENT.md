@@ -70,6 +70,13 @@ updates. Keep your changes there. Do not edit a generated release worktree.
 
 ## Windows Installer
 
+Current local release blocker: the production JavaScript and extension bundles
+compiled, but packaging could not find the Windows SDK's `signtool.exe`. Install
+the Windows 10 or 11 SDK through Visual Studio 2022 Build Tools, with the Desktop
+development with C++ workload. This machine prerequisite requires your own
+installer permissions; no signing certificate is needed for an unsigned preview.
+The build script now checks for the SDK before starting compilation.
+
 ```powershell
 .\scripts\freedomeditor-build.ps1
 ```

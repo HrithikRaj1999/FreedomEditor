@@ -7,6 +7,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$signToolDirectory = $null
+if (-not $SkipCompile) {
+	$sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\bin'
+	$missingSdk = 'Windows SDK with SignTool is required before building. Install the Windows 10 or 11 SDK through Visual Studio 2022 Build Tools (Desktop development with C++), then retry. No build was started.'
+	if (-not (Test-Path -LiteralPath $sdkRoot -PathType Container)) { throw $missingSdk }
+	$signTool = Get-ChildItem -LiteralPath $sdkRoot -Filter 'signtool.exe' -File -Recurse |
+		Where-Object { $_.FullName -match '\\(x64|x86)\\signtool\.exe$' } |
+		Sort-Object -Property @{ Expression = { $_.Directory.Parent.Name -as [version] }; Descending = $true }, @{ Expression = { $_.Directory.Name -eq 'x64' }; Descending = $true } |
+		Select-Object -First 1
+	if (-not $signTool) { throw $missingSdk }
+	$signToolDirectory = $signTool.DirectoryName
+}
 if (-not $NodePath) {
 	$configPath = Join-Path $root '.freedomeditor\config.json'
 	if (Test-Path -LiteralPath $configPath) {
@@ -30,7 +42,7 @@ function Invoke-Node {
 
 Push-Location $root
 try {
-	$env:PATH = "$(Split-Path -Parent $NodePath);$environmentPath"
+	$env:PATH = (@((Split-Path -Parent $NodePath), $signToolDirectory, $environmentPath) | Where-Object { $_ }) -join ';'
 	Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 	Invoke-Node -Arguments @($npm, '--prefix', 'freedomeditor', 'ci', '--ignore-scripts', '--no-audit', '--no-fund')
 	Invoke-Node -Arguments @('--test', 'scripts/freedomeditor-sync.test.mjs', 'extensions/freedomeditor/extension.test.cjs')
