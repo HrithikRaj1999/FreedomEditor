@@ -69,6 +69,17 @@ Copilot extension for local development only; it is not a redistribution step.
 
 ## Settings and Updates
 
+Local Ctrl+mouse-wheel zoom is enabled by default through
+`workbench.localMouseWheelZoom`. Point at a section or div to zoom that container
+and its contents independently of neighboring sections, including Settings,
+chat, and extension webviews. Code editors, virtualized lists, and terminals
+zoom as complete widgets so their internal rows remain aligned. Normal wheel
+scrolling is unchanged. Use **FreedomEditor: Reset Local Zoom** in the Command
+Palette to restore all local zooms, or turn the setting off to disable the
+feature and restore the original sizes. Zoom values are temporary and reset
+when their UI is recreated. Restart all FreedomEditor windows after rebuilding
+the feature, because webview resource handling also runs in the main process.
+
 VS Code's default profile is the one-way settings source. For a named profile,
 set `officialUserRoot` to its `User/profiles/<id>` directory in the private config.
 Existing FreedomEditor differences are captured in `.freedomeditor/overrides/`.
@@ -128,6 +139,14 @@ npm --prefix freedomeditor test
 Theme tests check core contrast pairs and native command routing. Sync tests
 cover JSONC, backups, overrides, stable-release decisions, and activation guards.
 They do not replace full editor integration tests or clean-machine installer tests.
+
+After compiling the client, run `scripts\test.bat --run
+vs/base/test/browser/elementZoom.test --grep "Local Element Zoom" --fail-zero`
+for the local zoom unit tests. Run `node scripts/freedomeditor-smoke.mjs
+--local-zoom` for an isolated desktop check of Settings and secure webviews,
+local text-size isolation, reset, disabling, and wide/compact layouts. This
+mode uses the existing webview service without requiring extension activation.
+Screenshots are stored under `.freedomeditor/smoke/`.
 
 The optional `node scripts/freedomeditor-smoke.mjs` uses an isolated profile to
 exercise the real Electron UI and record screenshots. It has not passed end to

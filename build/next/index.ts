@@ -162,6 +162,7 @@ function getEntryPointsForTarget(target: BuildTarget): string[] {
 	switch (target) {
 		case 'desktop':
 			return [
+				'vs/base/browser/elementZoom',
 				...workerEntryPoints,
 				...desktopWorkerEntryPoints,
 				...desktopEntryPoints,
@@ -173,6 +174,7 @@ function getEntryPointsForTarget(target: BuildTarget): string[] {
 			];
 		case 'server-web':
 			return [
+				'vs/base/browser/elementZoom',
 				...serverEntryPoints,
 				...workerEntryPoints,
 				...webEntryPoints,
@@ -180,6 +182,7 @@ function getEntryPointsForTarget(target: BuildTarget): string[] {
 			];
 		case 'web':
 			return [
+				'vs/base/browser/elementZoom',
 				...workerEntryPoints,
 				...webOnlyEntryPoints,
 				'vs/workbench/workbench.web.main.internal', // web workbench only (no browser shell)

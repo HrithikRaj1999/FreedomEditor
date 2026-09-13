@@ -392,6 +392,7 @@ export class OverlayWebview extends Disposable implements IOverlayWebview {
 
 	focus(): void { this._webview.value?.focus(); }
 	reload(): void { this._webview.value?.reload(); }
+	resetLocalZoom(): void { this._webview.value?.resetLocalZoom(); }
 	selectAll(): void { this._webview.value?.selectAll(); }
 	copy(): void { this._webview.value?.copy(); }
 	paste(): void { this._webview.value?.paste(); }

@@ -309,6 +309,7 @@ import '../workbench/contrib/comments/browser/comments.contribution.js';
 import '../workbench/contrib/url/browser/url.contribution.js';
 
 // Webview
+import '../workbench/contrib/localZoom/browser/localZoom.contribution.js';
 import '../workbench/contrib/webview/browser/webview.contribution.js';
 import '../workbench/contrib/webviewPanel/browser/webviewPanel.contribution.js';
 import '../workbench/contrib/webviewView/browser/webviewView.contribution.js';

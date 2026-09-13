@@ -12,10 +12,11 @@ import { IFileService } from '../../files/common/files.js';
 
 export class WebviewProtocolProvider implements IDisposable {
 
-	private static validWebviewFilePaths = new Map<string, { readonly mime: string }>([
+	private static validWebviewFilePaths = new Map<string, { readonly mime: string; readonly path?: AppResourcePath }>([
 		['/index.html', { mime: 'text/html' }],
 		['/fake.html', { mime: 'text/html' }],
 		['/service-worker.js', { mime: 'application/javascript' }],
+		['/elementZoom.js', { mime: 'application/javascript', path: 'vs/base/browser/elementZoom.js' }],
 	]);
 
 	constructor(
@@ -35,7 +36,7 @@ export class WebviewProtocolProvider implements IDisposable {
 			const uri = URI.parse(request.url);
 			const entry = WebviewProtocolProvider.validWebviewFilePaths.get(uri.path);
 			if (entry) {
-				const relativeResourcePath: AppResourcePath = `vs/workbench/contrib/webview/browser/pre${uri.path}`;
+				const relativeResourcePath: AppResourcePath = entry.path ?? `vs/workbench/contrib/webview/browser/pre${uri.path}`;
 				const url = FileAccess.asFileUri(relativeResourcePath);
 
 				const content = await this._fileService.readFile(url);

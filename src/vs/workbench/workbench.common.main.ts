@@ -317,6 +317,7 @@ import './contrib/comments/browser/comments.contribution.js';
 import './contrib/url/browser/url.contribution.js';
 
 // Webview
+import './contrib/localZoom/browser/localZoom.contribution.js';
 import './contrib/webview/browser/webview.contribution.js';
 import './contrib/webviewPanel/browser/webviewPanel.contribution.js';
 import './contrib/webviewView/browser/webviewView.contribution.js';
