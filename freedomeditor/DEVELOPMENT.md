@@ -252,10 +252,14 @@ tooling path limits. With the checked-out branch and tools on this machine:
 Push-Location .\freedomeditor\updater-extension
 node ..\..\build\node_modules\@vscode\vsce\vsce package --no-dependencies --out ..\..\.freedomeditor\artifacts\freedomeditor-updater.vsix
 Pop-Location
-& "$env:LOCALAPPDATA\Programs\FreedomEditor\bin\freedomeditor.cmd" --install-builtin-extension .\.freedomeditor\artifacts\freedomeditor-updater.vsix --do-not-sync
+& "$env:LOCALAPPDATA\Programs\FreedomEditor\bin\freedomeditor.cmd" --install-source freedomeditor --install-builtin-extension .\.freedomeditor\artifacts\freedomeditor-updater.vsix --do-not-sync
 
 .\scripts\freedomeditor-auto-update.ps1 -Action resume
 ```
+
+Keep `--install-source freedomeditor` in this command: the current flat-package
+CLI needs it to select its maintenance dispatcher when installing only a built-in
+companion. It does not install or update any additional extension.
 
 The checked-out `.freedomeditor\config.json` provides the pinned upstream base
 and Node path. `--install-root` and `--recovery-installer` override their defaults.
