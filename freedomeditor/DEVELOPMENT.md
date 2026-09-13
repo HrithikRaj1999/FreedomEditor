@@ -41,7 +41,7 @@ do not request elevation or collect passwords.
 Get the source in PowerShell:
 
 ```powershell
-git clone --branch freedomeditor --single-branch https://github.com/HrithikRaj1999/FreedomEditor.git
+git clone --branch freedomeditor-fixes --single-branch https://github.com/HrithikRaj1999/FreedomEditor.git
 cd FreedomEditor
 git lfs pull
 ```
@@ -84,11 +84,14 @@ command also refreshes workbench assets in `out/`; source edits are not enough
 for the development launcher. Fully quit and relaunch after rebuilding. If a
 previous taskbar pin retains its old icon, unpin it and pin the relaunched app.
 
-With no project arguments, launch opens an explicit empty workspace instead of
-the FreedomEditor source repository. Opening the source repository **untrusted**
+With no project arguments, launch passes `--new-window` to open a true empty
+window instead of the FreedomEditor source repository. A `.code-workspace` file
+can still be untrusted even when its `folders` array is empty, so the launcher
+does not create one. Opening the source repository **untrusted**
 disables built-in extensions located inside it, including GitHub Authentication,
 causing missing features and Copilot authentication-provider timeouts even when
-the encrypted session is saved. Open your project through **File > Open Folder**,
+the encrypted session is saved. Copilot itself also remains disabled in
+untrusted workspaces. Open your project through **File > Open Folder**,
 or pass its path to the launcher. If developing FreedomEditor itself, review the
 repository and make your own workspace-trust decision; the launcher does not
 disable trust checks or automatically trust folders.
@@ -148,23 +151,73 @@ updates. Keep your changes there. Do not edit a generated release worktree.
 
 ## Windows Installer
 
-Current local release blocker: the production JavaScript and extension bundles
-compiled, but packaging could not find the Windows SDK's `signtool.exe`. Install
-the Windows 10 or 11 SDK through Visual Studio 2022 Build Tools, with the Desktop
-development with C++ workload. This machine prerequisite requires your own
-installer permissions; no signing certificate is needed for an unsigned preview.
-The build script now checks for the SDK before starting compilation.
+Packaging requires the Windows SDK's `signtool.exe`. The build script accepts an
+installed SDK, a SignTool already on `PATH`, or an explicit `-SignToolPath`.
+Microsoft's signed
+[Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools)
+NuGet package also contains SignTool and its companion files, without requiring
+a system-wide SDK installation. Extract the complete package, not just the EXE.
+No signing certificate is needed to build an **unsigned preview**; SignTool is
+used to remove inherited signatures before changing Windows resources. This
+does not sign FreedomEditor with Microsoft's identity.
+The launcher applies a small, checked Git patch to `@vscode/gulp-electron`
+before packaging because version 1.43.1 otherwise ignores `PATH` and only
+searches the system SDK directory. The patch adds explicit `SIGNTOOL_PATH`
+support without changing signature removal or branding. An incompatible
+dependency update fails visibly instead of silently skipping the patch.
+Windows resource patching recognizes bundled ELF and Mach-O payloads and leaves
+them untouched; it still fails on missing or unrecognized native files. The
+`vscode-win32-x64-min-patch-dependencies` gulp task can resume this final step
+after the application and Copilot runtime have already been packaged.
 
 ```powershell
 .\scripts\freedomeditor-build.ps1
+
+# Reuse installed dependencies and an extracted Microsoft SDK:
+.\scripts\freedomeditor-build.ps1 -SkipDependencies -SignToolPath 'C:\FreedomEditorToolchain\windows-sdk-buildtools-10.0.28000.2705\bin\10.0.28000.0\x64\signtool.exe'
 ```
 
 The build uses VS Code's production pipeline, then Inno Setup to make a per-user
 installer. Output and SHA-256 files go to `.freedomeditor/artifacts/`. Electron is
-bundled. `-SkipDependencies` reuses installed dependencies; `-SkipCompile` only
-packages an already complete production build. Neither option creates missing
-build output. The application staging directory is `../VSCode-win32-x64` as
+bundled. `-SkipDependencies` reuses both the repository and maintenance
+dependencies; `-SkipCompile` only packages an already complete production build.
+The script rejects missing runtime files, unbranded executables, and missing
+compiled FreedomEditor, GitHub Authentication, or Copilot entry points. Neither
+option creates missing build output. The application staging directory is `..\VSCode-win32-x64` as
 required by the upstream build; final release artifacts remain inside this repo.
+Debug source maps remain in the build tree but are omitted from the installer.
+The installer checks the chosen destination against Windows' legacy path limit
+before copying files, instead of failing halfway through deeply nested Copilot
+dependencies. It does not change the machine's long-path policy.
+
+The per-user installer creates native FreedomEditor shortcuts and registers
+`freedomeditor://` authentication callbacks. It does not copy an official VS Code
+installation into the package. Optional coding tools install through Open VSX.
+Python, Debugpy, and Python Environments receive their explicitly declared
+proposed APIs in the product configuration, rather than enabling proposed APIs
+globally or depending on development-mode privileges. Open VSX distributions
+can still differ from Microsoft's packages, including native helper availability.
+
+### Keep an existing source-launch profile
+
+Normal installed launches use `%APPDATA%\FreedomEditor` for the profile and
+`%USERPROFILE%\.freedom-editor\extensions` for extensions. To reuse separate
+existing FreedomEditor directories without copying authentication databases,
+close the editor and create NTFS junctions **only if these default locations do
+not already exist**:
+
+```powershell
+New-Item -ItemType Junction -Path "$env:APPDATA\FreedomEditor" -Target 'C:\FreedomEditorProfile'
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.freedom-editor" -Force
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.freedom-editor\extensions" -Target 'C:\FreedomEditorExtensions'
+```
+
+Do not delete or replace an existing profile to make these commands succeed.
+Keep `%USERPROFILE%\.freedom-editor-shared` unchanged; it contains the shared,
+encrypted GitHub sessions. These junctions let the EXE, shortcuts, CLI, and
+authentication callbacks all use the same profile, including after updates.
+The installer and uninstaller do not remove these external data directories.
+Do not run source and installed instances against this same profile at the same time.
 
 Before publishing, test on a clean Windows machine: installation and uninstall,
 normal startup, Python and TypeScript activation, terminals, PDF and Mermaid
@@ -189,12 +242,20 @@ local text-size isolation, reset, disabling, and wide/compact layouts. This
 mode uses the existing webview service without requiring extension activation.
 Screenshots are stored under `.freedomeditor/smoke/`.
 
-The optional `node scripts/freedomeditor-smoke.mjs` uses an isolated profile to
-exercise the real Electron UI and record screenshots. It has not passed end to
-end yet: theme-picker selection and extension-host startup timed out in local
-validation. Do not treat the captured Graphite preview as a successful full
-GUI or extension-activation test. Light-theme and compact-window checks remain
-unverified in the real UI.
+The optional `node scripts/freedomeditor-smoke.mjs` uses isolated profile and
+shared-storage directories to exercise the real Electron UI and record
+screenshots under `.freedomeditor\smoke\`, without changing published previews
+or personal authentication storage. To exercise a packaged build instead of the
+development runtime:
+
+```powershell
+node scripts\freedomeditor-smoke.mjs --executable 'C:\VSCode-win32-x64\FreedomEditor.exe'
+```
+
+This checks customization commands, both Freedom themes, and compact layouts.
+It disables Copilot in its isolated fixture and does not prove live Copilot
+service access. The internal `--local-zoom` webview fixture requires an unbundled
+development build and cannot be combined with `--executable`.
 
 ## Publishing
 
@@ -203,3 +264,7 @@ tokens, logs, `.freedomeditor/`, `node_modules/`, `.build/`, or an installed
 Microsoft VS Code directory. Review `git diff --cached` before committing.
 Retain upstream and third-party licenses; do not claim Microsoft/Google
 affiliation or universal extension compatibility.
+Source-only publishing is separate from redistributing the installer. Review
+the bundled Copilot CLI and other dependency licenses before publishing binary
+releases; the repository's MIT license does not override their redistribution
+conditions.

@@ -251,18 +251,12 @@ export function launchEnvironment(parent = process.env) {
 	return environment;
 }
 
-export function launchWorkspaceArguments(config, args) {
+export function launchWorkspaceArguments(args) {
 	if (args.length) {
 		return args;
 	}
-	// Opening the source tree untrusted disables the built-ins located inside it.
-	// An explicit empty workspace also prevents extension-development window restoration.
-	const workspace = path.join(config.dataRoot, 'launch.code-workspace');
-	if (!existsSync(workspace)) {
-		mkdirSync(config.dataRoot, { recursive: true });
-		saveJson(workspace, { folders: [] });
-	}
-	return [workspace];
+	// Even a workspace file with no folders can be untrusted and disable Copilot.
+	return ['--new-window'];
 }
 
 function scheduleCheck(config) {
@@ -322,7 +316,7 @@ function launch(config, args) {
 			console.error(`Optional local Copilot was not loaded: ${error.message}`);
 		}
 	}
-	launchArgs.push(...launchWorkspaceArguments(config, args));
+	launchArgs.push(...launchWorkspaceArguments(args));
 	const environment = launchEnvironment();
 	const child = spawn(path.join(state.active.path, '.build/electron/FreedomEditor.exe'), launchArgs, {
 		cwd: state.active.path, env: environment, detached: true, windowsHide: false, stdio: 'ignore'

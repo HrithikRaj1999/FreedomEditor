@@ -1,12 +1,23 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { parseArgs } from 'node:util';
+import { launchEnvironment } from './freedomeditor-sync.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const require = createRequire(path.join(root, 'package.json'));
 const { _electron } = require('playwright-core');
-const localZoomMode = process.argv.includes('--local-zoom');
+const { values } = parseArgs({
+	options: {
+		'local-zoom': { type: 'boolean', default: false },
+		executable: { type: 'string' },
+		'extensions-dir': { type: 'string' }
+	}
+});
+const localZoomMode = values['local-zoom'];
+const packaged = !!values.executable;
+assert.ok(!packaged || !localZoomMode, 'The internal webview local-zoom fixture requires an unbundled development build.');
 const runs = path.join(root, '.freedomeditor', 'smoke');
 mkdirSync(runs, { recursive: true });
 const runRoot = mkdtempSync(path.join(runs, 'desktop-'));
@@ -49,12 +60,23 @@ writeFileSync(path.join(profile, 'User/settings.json'), JSON.stringify({
 	'telemetry.telemetryLevel': 'off',
 	'chat.disableAIFeatures': true
 }, null, '\t'));
-const config = JSON.parse(readFileSync(path.join(root, '.freedomeditor/config.json'), 'utf8'));
-const environment = { ...process.env, VSCODE_DEV: '1', NODE_ENV: 'development', VSCODE_CLI: '1' };
-delete environment.ELECTRON_RUN_AS_NODE;
+const configPath = path.join(root, '.freedomeditor', 'config.json');
+const config = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf8')) : {};
+const extensions = values['extensions-dir'] ?? config.extensionsRoot ?? path.join(runRoot, 'extensions');
+const environment = launchEnvironment();
+for (const key of Object.keys(environment)) {
+	if (/^GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)$/i.test(key)) {
+		delete environment[key];
+	}
+}
+if (packaged) {
+	delete environment.VSCODE_DEV;
+	environment.NODE_ENV = 'production';
+}
 const app = await _electron.launch({
-	executablePath: path.join(root, '.build/electron/FreedomEditor.exe'),
-	args: [root, workspace, path.join(workspace, 'pipeline.ts'), '--user-data-dir', profile, '--extensions-dir', config.extensionsRoot,
+	executablePath: values.executable ?? path.join(root, '.build', 'electron', 'FreedomEditor.exe'),
+	args: [...(packaged ? [] : [root]), workspace, path.join(workspace, 'pipeline.ts'), '--user-data-dir', profile, '--extensions-dir', extensions,
+		'--shared-data-dir', path.join(runRoot, 'shared-data'),
 		'--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--disable-extension=vscode.vscode-api-tests',
 		'--disable-extension=GitHub.copilot-chat', '--disable-extension=GitHub.copilot'],
 	cwd: root,
@@ -62,6 +84,12 @@ const app = await _electron.launch({
 	timeout: 90_000
 });
 try {
+	if (packaged) {
+		const identity = await app.evaluate(({ app }) => ({
+			name: app.getName(), packaged: app.isPackaged, profile: app.getPath('userData')
+		}));
+		assert.deepEqual(identity, { name: 'FreedomEditor', packaged: true, profile });
+	}
 	const window = await app.firstWindow({ timeout: 90_000 });
 	await window.locator('.monaco-workbench').waitFor({ timeout: 90_000 });
 	await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 960));
@@ -69,6 +97,7 @@ try {
 	if (localZoomMode) {
 		await testLocalZoom(window);
 	} else {
+	await window.locator('[aria-label="Customize FreedomEditor"]').first().waitFor({ timeout: 90_000 });
 	await window.keyboard.press('Control+Shift+P');
 	const input = window.locator('.quick-input-widget .quick-input-box input');
 	await input.fill('>FreedomEditor: Customize Editor');
@@ -79,18 +108,18 @@ try {
 	await window.keyboard.press('Escape');
 	const graphite = await window.locator('.monaco-workbench').evaluate(element => getComputedStyle(element).getPropertyValue('--vscode-editor-background').trim());
 	assert.equal(graphite.toLowerCase(), '#1c2021');
-	await window.screenshot({ path: path.join(root, 'freedomeditor/assets/preview-graphite.png') });
+	await window.screenshot({ path: path.join(runRoot, 'preview-graphite.png') });
 	await window.keyboard.press('Control+k');
 	await window.keyboard.press('Control+t');
 	await window.locator('.quick-input-list .monaco-list-row').filter({ hasText: 'Freedom Graphite' }).first().waitFor();
 	await input.fill('Freedom Paper');
 	await window.locator('.quick-input-list .monaco-list-row').filter({ hasText: 'Freedom Paper' }).first().click();
 	await window.waitForFunction(() => getComputedStyle(document.querySelector('.monaco-workbench')).getPropertyValue('--vscode-editor-background').trim().toLowerCase() === '#fafcfb');
-	await window.screenshot({ path: path.join(root, 'freedomeditor/assets/preview-paper.png') });
+	await window.screenshot({ path: path.join(runRoot, 'preview-paper.png') });
 	await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 720));
 	assert.ok(await window.locator('.monaco-editor .view-lines').first().isVisible());
 	await window.screenshot({ path: path.join(runRoot, 'compact.png') });
-	console.log(JSON.stringify({ result: 'passed', profile, screenshots: 'freedomeditor/assets/preview-{graphite,paper}.png', compact: path.join(runRoot, 'compact.png') }, null, 2));
+	console.log(JSON.stringify({ result: 'passed', profile, screenshots: runRoot, packaged }, null, 2));
 	}
 } catch (error) {
 	const window = app.windows()[0];

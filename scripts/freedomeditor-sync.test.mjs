@@ -53,6 +53,19 @@ test('Windows branding icon contains seven complete PNG-backed resolutions', () 
 	assert.equal(end, icon.length);
 });
 
+test('packaged Python tooling receives only its explicit supported API proposals', () => {
+	const root = path.resolve(import.meta.dirname, '..');
+	const product = JSON.parse(readFileSync(path.join(root, 'product.json'), 'utf8'));
+	assert.deepEqual(Object.keys(product.extensionEnabledApiProposals).sort(), [
+		'ms-python.debugpy', 'ms-python.python', 'ms-python.vscode-python-envs'
+	]);
+	for (const proposals of Object.values(product.extensionEnabledApiProposals)) {
+		for (const proposal of proposals) {
+			assert.ok(existsSync(path.join(root, 'src', 'vscode-dts', `vscode.proposed.${proposal}.d.ts`)), `Unsupported API proposal: ${proposal}`);
+		}
+	}
+});
+
 test('discovers a conventional VS Code installation', context => {
 	const directory = fixture(context);
 	const appPath = addInstallation(directory, '1.137.0');
@@ -176,13 +189,10 @@ test('launch keeps the configured profile independent of the calling editor envi
 	assert.equal(parent.VSCODE_APPDATA, 'another-profile');
 });
 
-test('default launch opens an explicit empty workspace rather than disabling source-tree built-ins', context => {
-	const dataRoot = fixture(context);
-	const config = { dataRoot };
-	const [workspace] = launchWorkspaceArguments(config, []);
-	assert.deepEqual(JSON.parse(readFileSync(workspace, 'utf8')), { folders: [] });
-	assert.deepEqual(launchWorkspaceArguments(config, []), [workspace]);
-	assert.deepEqual(launchWorkspaceArguments(config, ['chosen-project']), ['chosen-project']);
+test('default launch opens a true empty window instead of an untrusted workspace file', () => {
+	assert.deepEqual(launchWorkspaceArguments([]), ['--new-window']);
+	assert.deepEqual(launchWorkspaceArguments(['chosen-project']), ['chosen-project']);
+	assert.deepEqual(launchWorkspaceArguments(['--new-window', 'chosen-project']), ['--new-window', 'chosen-project']);
 });
 
 test('repeated settings sync preserves authentication databases and Electron encryption state', context => {

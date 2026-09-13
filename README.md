@@ -18,12 +18,15 @@ models, or services are included. Visual inspiration does not imply affiliation.
 
 **Current status: source preview only. No Windows installer is published yet.**
 There is no `FreedomEditorSetup.exe` to download from this repository or its
-Releases page. Packaging stopped because the build machine is missing the
-Windows SDK's SignTool. Full GUI validation is also unfinished.
+Releases page. The build scripts create a local, unsigned
+`FreedomEditorSetup-x64-<version>.exe`; GitHub's source ZIP is not an installer.
 
 The [Windows Installation Guide](freedomeditor/DEVELOPMENT.md) explains the
-current source-build option and the missing prerequisites. Installing Microsoft
-Build Tools installs **build prerequisites only**, not FreedomEditor or VS Code.
+source-build option, packaging prerequisites, and how to preserve an existing
+FreedomEditor profile when switching to the installed application. SignTool
+can come from an installed Windows SDK or Microsoft's standalone SDK BuildTools
+package. Installing Microsoft Build Tools installs **build prerequisites only**,
+not FreedomEditor or VS Code.
 
 The intended one-click installer targets **Windows 10 (2004+) and Windows 11,
 x64** and will be listed under
@@ -32,7 +35,7 @@ and validation succeed. It will bundle Electron; end users will not need the
 build tools or a separate Electron installation. Python execution will still
 need a Python runtime, and TypeScript projects need their normal dependencies.
 
-GitHub's source ZIP is not an installer. Code signing is not configured yet.
+Code signing is not configured yet. Windows may warn about an unsigned installer.
 
 ## What You Get
 

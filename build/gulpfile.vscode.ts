@@ -38,6 +38,7 @@ import globCallback from 'glob';
 import rceditCallback from 'rcedit';
 import { spawnTsgo } from './lib/tsgo.ts';
 import { runEsbuildTranspile, runEsbuildBundle } from './lib/esbuild.ts';
+import { isWindowsNativeBinary } from './lib/nativeBinary.ts';
 
 
 const glob = promisify(globCallback);
@@ -660,6 +661,10 @@ function patchWin32DependenciesTask(destinationFolderName: string) {
 			const basename = path.basename(dep);
 			const fullPath = path.join(cwd, dep);
 
+			if (!await isWindowsNativeBinary(fullPath)) {
+				console.log(`Skipping Windows resource patching for non-Windows binary: ${dep}`);
+				return;
+			}
 			await stripAuthenticodeSignature(fullPath);
 			await rcedit(fullPath, {
 				'file-version': baseVersion,
@@ -726,7 +731,9 @@ BUILD_TARGETS.forEach(buildTarget => {
 		];
 
 		if (platform === 'win32') {
-			packageTasks.push(patchWin32DependenciesTask(destinationFolderName));
+			const patchDependencies = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}-patch-dependencies`, patchWin32DependenciesTask(destinationFolderName));
+			task.task(patchDependencies);
+			packageTasks.push(patchDependencies);
 		}
 
 		const vscodeTaskCI = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
