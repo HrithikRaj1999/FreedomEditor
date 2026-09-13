@@ -14,7 +14,7 @@ const semver = require('semver');
 const updateEndpoint = 'https://update.code.visualstudio.com/api/update/win32-x64-user/stable/latest';
 const upstreamUrl = 'https://github.com/microsoft/vscode.git';
 
-function run(command, args, options = {}) {
+export function run(command, args, options = {}) {
 	const result = spawnSync(command, args, { cwd: sourceRoot, encoding: 'utf8', timeout: 120_000, maxBuffer: 64 * 1024 * 1024, windowsHide: true, ...options });
 	if (result.error || result.status !== 0) {
 		throw new Error(`${path.basename(command)} ${args[0] ?? ''} failed: ${result.error?.message ?? result.stderr ?? result.status}`);
@@ -22,11 +22,11 @@ function run(command, args, options = {}) {
 	return result.stdout?.trim() ?? '';
 }
 
-function readJson(filePath) {
+export function readJson(filePath) {
 	return JSON.parse(readFileSync(filePath, 'utf8'));
 }
 
-function saveJson(filePath, value) {
+export function saveJson(filePath, value) {
 	writeAtomic(filePath, `${JSON.stringify(value, null, '\t')}\n`);
 }
 
@@ -42,7 +42,7 @@ function editorRunning() {
 	return /"FreedomEditor\.exe"/i.test(run('tasklist.exe', ['/FI', 'IMAGENAME eq FreedomEditor.exe', '/FO', 'CSV', '/NH']));
 }
 
-function acquireLock(dataRoot) {
+export function acquireLock(dataRoot) {
 	mkdirSync(dataRoot, { recursive: true });
 	const lockPath = path.join(dataRoot, 'maintenance.lock');
 	if (existsSync(lockPath)) {
@@ -94,7 +94,7 @@ function validateRelease(release) {
 	}
 }
 
-async function latestRelease() {
+export async function latestRelease() {
 	const response = await fetch(updateEndpoint, { signal: AbortSignal.timeout(30_000) });
 	if (!response.ok) {
 		throw new Error(`Official update check failed: HTTP ${response.status}`);
@@ -148,7 +148,7 @@ function initialConfiguration(args) {
 }
 
 function overlayNewFiles(config, destination) {
-	const names = run('git', ['ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
+	const names = run('git', ['ls-files', '--others', '--exclude-standard', '-z'], { cwd: config.sourceRoot }).split('\0').filter(Boolean);
 	const allowed = /^(freedomeditor\/|extensions\/freedomeditor\/|scripts\/freedomeditor[\w.-]*$|\.github\/workflows\/freedomeditor[\w.-]*$|FREEDOMEDITOR\.md$)/;
 	for (const relative of names) {
 		if (!allowed.test(relative)) {
@@ -157,6 +157,33 @@ function overlayNewFiles(config, destination) {
 		const target = path.join(destination, relative);
 		mkdirSync(path.dirname(target), { recursive: true });
 		copyFileSync(path.join(config.sourceRoot, relative), target);
+	}
+}
+
+export function fetchOfficialSource(config, latest) {
+	compareVersions(latest.productVersion, latest.productVersion);
+	if (!/^[a-f0-9]{40}$/i.test(latest.version)) {
+		throw new Error('The official source commit is invalid.');
+	}
+	const reference = `refs/freedomeditor-updates/${latest.version}`;
+	run('git', ['fetch', '--no-tags', upstreamUrl, `refs/tags/${latest.productVersion}:${reference}`], { cwd: config.sourceRoot, timeout: 5 * 60_000 });
+	const fetched = run('git', ['rev-parse', `${reference}^{commit}`], { cwd: config.sourceRoot });
+	if (fetched !== latest.version) {
+		throw new Error('The GitHub stable tag does not match the official update service commit.');
+	}
+	return fetched;
+}
+
+export function applyCustomizations(config, destination, revision) {
+	const patchPath = path.join(destination, '.freedomeditor', 'customizations.patch');
+	mkdirSync(path.dirname(patchPath), { recursive: true });
+	const revisions = revision ? [config.upstreamBase, revision] : [config.upstreamBase];
+	run('git', ['diff', '--binary', `--output=${patchPath}`, ...revisions, '--'], { cwd: config.sourceRoot });
+	if (readFileSync(patchPath).length) {
+		run('git', ['apply', '--3way', '--index', patchPath], { cwd: destination });
+	}
+	if (!revision) {
+		overlayNewFiles(config, destination);
 	}
 }
 
@@ -200,23 +227,13 @@ async function update(config, automatic) {
 			console.log(`FreedomEditor ${state.active.version}; latest official stable ${latest.productVersion}.`);
 			return;
 		}
-		run('git', ['fetch', '--no-tags', upstreamUrl, `refs/tags/${latest.productVersion}`], { timeout: 5 * 60_000 });
-		const fetched = run('git', ['rev-parse', 'FETCH_HEAD^{commit}']);
-		if (fetched !== latest.version) {
-			throw new Error('The GitHub stable tag does not match the official update service commit.');
-		}
+		const fetched = fetchOfficialSource(config, latest);
 		const stagedRoot = path.join(config.dataRoot, 'releases', `${latest.productVersion}-${Date.now()}`);
 		mkdirSync(path.dirname(stagedRoot), { recursive: true });
 		run('git', ['worktree', 'add', '--detach', stagedRoot, fetched], { timeout: 180_000 });
 		state.staging = stagedRoot;
 		saveJson(statePath, state);
-		const patch = run('git', ['diff', '--binary', config.upstreamBase, '--']);
-		if (patch) {
-			const patchPath = path.join(config.dataRoot, `customizations-${Date.now()}.patch`);
-			writeFileSync(patchPath, `${patch}\n`);
-			run('git', ['-C', stagedRoot, 'apply', '--3way', '--index', patchPath]);
-		}
-		overlayNewFiles(config, stagedRoot);
+		applyCustomizations(config, stagedRoot);
 		buildRelease(config, stagedRoot);
 		const pending = { path: stagedRoot, version: latest.productVersion, upstreamCommit: fetched };
 		validateRelease(pending);
@@ -403,7 +420,7 @@ function readOptional(filePath, fallback) {
 	return existsSync(filePath) ? readFileSync(filePath, 'utf8') : fallback;
 }
 
-function writeAtomic(filePath, contents) {
+export function writeAtomic(filePath, contents) {
 	mkdirSync(path.dirname(filePath), { recursive: true });
 	const temporary = `${filePath}.${process.pid}.tmp`;
 	try {

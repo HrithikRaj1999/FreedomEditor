@@ -30,7 +30,9 @@ UninstallDisplayIcon={app}\FreedomEditor.exe
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
-CloseApplications=yes
+AppMutex=freedomeditor
+SetupMutex=freedomeditorsetup,freedomeditor-updating
+CloseApplications=no
 RestartApplications=no
 ChangesAssociations=yes
 LicenseFile={#RepoDir}\LICENSE.txt
@@ -60,9 +62,25 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -N
 Filename: "{app}\FreedomEditor.exe"; Description: "Open FreedomEditor"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function GetSystemMetrics(Index: Integer): Integer;
+  external 'GetSystemMetrics@user32.dll stdcall';
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  SessionFlag: String;
 begin
   Result := '';
+  SessionFlag := ExpandConstant('{param:sessionend|}');
+  if (GetSystemMetrics($2000) <> 0) or ((SessionFlag <> '') and FileExists(SessionFlag)) then
+  begin
+    Result := 'Windows is ending this session. Installation has been deferred.';
+    Exit;
+  end;
+  if CheckForMutexes('freedomeditor') then
+  begin
+    Result := 'FreedomEditor is still running. Close all instances and retry.';
+    Exit;
+  end;
   if Length(ExpandConstant('{app}')) + {#LongestRuntimeRelativePath} >= 260 then
     Result := 'The installation folder is too long for this Windows package. Choose a shorter folder and retry. Your profile will not be moved.';
 end;

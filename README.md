@@ -79,17 +79,22 @@ subject to GitHub's terms and compatibility.
 
 ## Updates and Performance
 
-The current source base is **VS Code 1.137.0**. FreedomEditor is a separate build;
-official VS Code's binary updater cannot safely update it. Source users can run
-`scripts/freedomeditor.ps1 -Action check` or `-Action update`. The updater checks
-Microsoft's stable release against its Git tag, stages local changes separately,
-and only queues a release after building and testing it. Conflicts or missing
-build prerequisites leave the active editor unchanged. There can be update lag.
+The current source base is **VS Code 1.137.0**. Configured Windows installations
+check the official stable VS Code source release in the background when opened.
+The FreedomEditor Updates companion rebuilds newer source with the committed
+FreedomEditor customizations, then installs only after all editor processes close.
+It never replaces FreedomEditor with Microsoft's distribution binaries, modifies
+the private profile, or force-closes your work. See the
+[native update setup](freedomeditor/DEVELOPMENT.md#native-automatic-source-updates).
 
-Future installer releases will be distributed through this repository's Releases page.
-Automatic signed binary updates are not implemented. The native layout avoids
-an extra webview UI, but no benchmark demonstrates that this fork is faster or
-uses less memory than official VS Code or Antigravity.
+Updates require the local source/toolchain and can take a long time to build.
+Conflicting patches or missing prerequisites leave the current application intact.
+Failed installation attempts pause updates and retain a recovery installer.
+Source-launch users can still use `scripts\freedomeditor.ps1 -Action check` or
+`-Action update`; its staging and rollback are separate from native installation.
+Automatic signed release-binary downloads are not implemented. The native layout
+avoids an extra webview UI, but no benchmark demonstrates that this fork is faster
+or uses less memory than official VS Code or Antigravity.
 
 ## Build and Customize
 

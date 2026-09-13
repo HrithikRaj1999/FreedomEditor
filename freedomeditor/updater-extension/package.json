@@ -1,0 +1,26 @@
+{
+	"name": "freedomeditor-updater",
+	"displayName": "FreedomEditor Updates",
+	"description": "Official stable VS Code source updates that preserve FreedomEditor customizations.",
+	"publisher": "hrithikraj1999",
+	"version": "0.1.0",
+	"license": "MIT",
+	"repository": { "type": "git", "url": "https://github.com/HrithikRaj1999/FreedomEditor.git" },
+	"engines": { "vscode": "^1.100.0" },
+	"categories": ["Other"],
+	"main": "./extension.cjs",
+	"activationEvents": ["onStartupFinished"],
+	"extensionKind": ["ui"],
+	"capabilities": {
+		"untrustedWorkspaces": { "supported": true },
+		"virtualWorkspaces": { "supported": true }
+	},
+	"contributes": {
+		"commands": [
+			{ "command": "freedomeditor.checkForUpdates", "title": "%checkForUpdates%", "category": "FreedomEditor" },
+			{ "command": "freedomeditor.showUpdateLog", "title": "%showUpdateLog%", "category": "FreedomEditor" },
+			{ "command": "freedomeditor.pauseUpdates", "title": "%pauseUpdates%", "category": "FreedomEditor" },
+			{ "command": "freedomeditor.resumeUpdates", "title": "%resumeUpdates%", "category": "FreedomEditor" }
+		]
+	}
+}

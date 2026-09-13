@@ -60,7 +60,7 @@ try {
 	if (-not $SkipDependencies) {
 		Invoke-Node -Arguments @($npm, '--prefix', 'freedomeditor', 'ci', '--ignore-scripts', '--no-audit', '--no-fund')
 	}
-	Invoke-Node -Arguments @('--test', 'scripts/freedomeditor-sync.test.mjs', 'extensions/freedomeditor/extension.test.cjs')
+	Invoke-Node -Arguments @($npm, '--prefix', 'freedomeditor', 'test')
 	Invoke-Node -Arguments @('scripts/freedomeditor-brand.mjs')
 	if (-not $SkipCompile) {
 		if (Test-Path -LiteralPath $packageRoot) { throw "Packaging destination already exists: $packageRoot. Move it aside before building." }
@@ -87,12 +87,16 @@ try {
 		if (-not $manifest.main) { throw "Incomplete desktop extension: $extension has no entry point." }
 		Invoke-Node -Arguments @('--input-type=commonjs', '--eval', 'require.resolve(process.argv[1]);', (Join-Path $extensionRoot $manifest.main))
 	}
+	Invoke-Node -Arguments @('scripts/freedomeditor-auto-update.mjs', 'bootstrap', '--install-root', $packageRoot)
 	$compiler = Join-Path $root 'node_modules\innosetup\bin\ISCC.exe'
 	if (-not (Test-Path -LiteralPath $compiler)) { throw 'The Inno Setup compiler is missing. Install the repository dependencies first.' }
 	$longestRuntimeRelativePath = (Get-ChildItem -LiteralPath $packageRoot -Recurse -File |
 		Where-Object { $_.Name -notmatch '\.(js|mjs|cjs|css|ts|mts|cts)\.map$' } |
 		ForEach-Object { $_.FullName.Length - $packageRoot.Length } |
 		Measure-Object -Maximum).Maximum
+	if ($packageRoot.Length + $longestRuntimeRelativePath -ge 260) {
+		throw 'The package staging path is too long for Inno Setup. Use a shorter source checkout or automatic-update build root.'
+	}
 	New-Item -ItemType Directory -Path $output -Force | Out-Null
 	& $compiler "/DSourceDir=$packageRoot" "/DOutputDir=$output" "/DAppVersion=$version" "/DRepoDir=$root" "/DLongestRuntimeRelativePath=$longestRuntimeRelativePath" (Join-Path $root 'freedomeditor\installer.iss')
 	if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed with exit code $LASTEXITCODE." }

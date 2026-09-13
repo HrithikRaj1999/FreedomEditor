@@ -5,7 +5,7 @@
 	"type": "module",
 	"engines": { "node": ">=22" },
 	"scripts": {
-		"test": "node --test ../scripts/freedomeditor-sync.test.mjs ../extensions/freedomeditor/extension.test.cjs",
+		"test": "node --test ../scripts/freedomeditor-sync.test.mjs ../scripts/freedomeditor-auto-update.test.mjs ../extensions/freedomeditor/extension.test.cjs updater-extension/extension.test.cjs",
 		"brand": "node ../scripts/freedomeditor-brand.mjs"
 	},
 	"dependencies": {

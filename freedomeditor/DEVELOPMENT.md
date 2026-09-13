@@ -224,6 +224,89 @@ normal startup, Python and TypeScript activation, terminals, PDF and Mermaid
 previews, themes, and updates. Do not label a source build as a tested installer.
 Sign release binaries when a trusted signing identity is available.
 
+### Native automatic source updates
+
+The optional **FreedomEditor Updates** companion checks for updates after the
+installed editor opens, including launches from the desktop, Start menu, EXE,
+and CLI. It is installed as an application-scoped built-in companion in the
+external extensions directory, so it is shared by all profiles and survives
+application replacement. It is machine-local and is not uploaded by Settings Sync.
+No scheduled task or Microsoft-branded binary update service is required.
+
+The worker checks Microsoft's stable update API, fetches only the corresponding
+tag from `https://github.com/microsoft/vscode.git`, and requires the exact source
+commit to match. Stable maintenance and minor releases are eligible; Insiders,
+downgrades, and same-version source replacements are not. It does not pull your
+fork automatically. Commit approved customizations to the configured local
+branch; dirty files and untracked work in progress are never deployed by this
+native updater.
+
+Initialize the source toolchain and keep a matching recovery installer plus its
+`.sha256` file before configuring. Use a short build root to stay within Windows
+tooling path limits. With the checked-out branch and tools on this machine:
+
+```powershell
+.\scripts\freedomeditor-auto-update.ps1 -Action configure --paused --source-ref refs/heads/freedomeditor-fixes --build-root 'C:\FreedomEditor\.build' --sign-tool 'C:\FreedomEditorToolchain\windows-sdk-buildtools-10.0.28000.2705\bin\10.0.28000.0\x64\signtool.exe'
+
+# Package the companion using the repository's existing VSIX tool:
+Push-Location .\freedomeditor\updater-extension
+node ..\..\build\node_modules\@vscode\vsce\vsce package --no-dependencies --out ..\..\.freedomeditor\artifacts\freedomeditor-updater.vsix
+Pop-Location
+& "$env:LOCALAPPDATA\Programs\FreedomEditor\bin\freedomeditor.cmd" --install-builtin-extension .\.freedomeditor\artifacts\freedomeditor-updater.vsix --do-not-sync
+
+.\scripts\freedomeditor-auto-update.ps1 -Action resume
+```
+
+The checked-out `.freedomeditor\config.json` provides the pinned upstream base
+and Node path. `--install-root` and `--recovery-installer` override their defaults.
+Reconfiguration clears a queued update so it cannot install an earlier branch's
+customizations; retained installers are not removed. Native startup integration
+requires the default machine-private configuration location. Configuration, state,
+logs, and verified recovery
+packages live in `%LOCALAPPDATA%\FreedomEditor\updates`, outside the application
+and workspace. Keep those files private and retain the source checkout and SDK.
+The configured branch must contain the updater and production-build patches.
+Node must satisfy the candidate release's `.nvmrc`; newly required native build
+prerequisites are reported instead of silently skipped.
+
+New source is built and exercised in a separate temporary worktree. Branding,
+profile-directory identity, version, source commit, executable, and installer
+checksums must agree before installation is queued. Existing windows are never
+force-closed; a prepared update waits for all installed editor processes to exit.
+Configuration also installs a small, source-controlled native bootstrap in
+`resources\app\freedomeditor` and atomically selects it as the packaged entry
+point. It delegates to VS Code's original main module unless this installation's
+global update mutex is held. The worker acquires that gate and drains any earlier
+startup before replacing files, so a new launch cannot open a workbench during
+installation. New launch attempts exit with an update-in-progress message rather
+than touching workspace state. The existing EXE and already-open windows are not
+replaced during configuration. Future production packages include the same gate;
+missing or unsupported bootstrap/dependency layouts stop automatic replacement.
+Pause requests are rechecked before installation. Shutdown/logoff defers work
+to a later editor launch. Large source builds can take tens of minutes or longer.
+
+Use the companion's **Check for Updates**, **Show Update Log**, **Pause Automatic
+Updates**, and **Resume Automatic Updates** commands, or:
+
+```powershell
+.\scripts\freedomeditor-auto-update.ps1 -Action status
+.\scripts\freedomeditor-auto-update.ps1 -Action check
+.\scripts\freedomeditor-auto-update.ps1 -Action pause
+.\scripts\freedomeditor-auto-update.ps1 -Action resume
+```
+
+Manual checks report availability without building or installing. Build errors
+leave the installed editor unchanged and retain staging for diagnosis. Installer
+or post-install identity/integrity failures pause automatic attempts. The current
+and previous recovery installers remain in the private package directory; this
+is **not** an automatic rollback guarantee after power loss or a damaged install.
+An interrupted update is accepted as complete only with a successful installer
+receipt and matching hashes for the entire recorded runtime payload.
+Read `state.json` and `update.log`, close FreedomEditor, and run the retained
+known-good installer at the same destination if manual recovery is necessary.
+It does not remove the external profile, extension store, or shared credentials.
+Resolve the failure and reconfigure the recovered baseline before resuming.
+
 ## Focused Checks
 
 ```powershell
