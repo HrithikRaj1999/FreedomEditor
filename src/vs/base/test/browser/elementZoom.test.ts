@@ -91,6 +91,27 @@ suite('Local Element Zoom', () => {
 		assert.deepStrictEqual(actual, [['1.1', '', ''], ['1.1', '', ''], ['1.1', '', '']]);
 	});
 
+	test('lets the parent scroll to reveal a zoomed fixed-layout widget, and restores it afterwards', () => {
+		target.className = 'monaco-list';
+		wheel(target.children[0]);
+		assert.strictEqual(target.style.zoom, '1.1');
+		assert.strictEqual(container.style.overflowY, 'auto');
+		assert.strictEqual(container.style.getPropertyPriority('overflow-y'), 'important');
+
+		// zoom back out to 1: the parent should no longer need the escape-hatch scrolling
+		wheel(target.children[0], { deltaY: 100 });
+		assert.strictEqual(target.style.zoom, '');
+		assert.strictEqual(container.style.overflowY, '');
+	});
+
+	test('restores the parent overflow on reset even mid-zoom', () => {
+		target.className = 'monaco-editor';
+		wheel(target.children[0]);
+		assert.strictEqual(container.style.overflowY, 'auto');
+		controller.reset();
+		assert.strictEqual(container.style.overflowY, '');
+	});
+
 	test('reversing the wheel restores the original zoom', () => {
 		wheel(target);
 		wheel(target, { deltaY: 100 });

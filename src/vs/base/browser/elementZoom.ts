@@ -5,9 +5,57 @@ export interface IElementZoomController extends IDisposable {
 }
 
 export function installElementZoom(container: HTMLElement, isEnabled: () => boolean = () => true): IElementZoomController {
-	const zoomedElements = new Map<HTMLElement, { value: string; priority: string; base: number; factor: number }>();
+	const zoomedElements = new Map<HTMLElement, { value: string; priority: string; base: number; factor: number; parent: HTMLElement | null }>();
+	const zoomedParents = new Map<HTMLElement, { value: string; priority: string; refCount: number }>();
 	const targetWindow = container.ownerDocument.defaultView!;
 	const options = { capture: true, passive: false };
+
+	// CSS `zoom` grows the target's own box (unlike `transform: scale`), so a
+	// zoomed-in fixed-layout widget (editor/list/terminal) can render taller
+	// than the fixed-size ancestor that hosts it. That ancestor typically
+	// clips overflow, and the widget's own virtualized scroll accounting is
+	// unaware of the zoom (it measures in the widget's local, still-unzoomed
+	// coordinate space), so the extra rendered content becomes permanently
+	// unreachable: the internal scrollbar reports "scrolled to the end" while
+	// part of the last rows/lines stay clipped below the fold. Restoring
+	// native overflow scrolling on the immediate parent gives that clipped
+	// content an escape hatch so it can still be scrolled into view.
+	const releaseParentOverflow = (parent: HTMLElement | null) => {
+		if (!parent) {
+			return;
+		}
+		const entry = zoomedParents.get(parent);
+		if (!entry) {
+			return;
+		}
+		entry.refCount--;
+		if (entry.refCount > 0) {
+			return;
+		}
+		if (entry.value) {
+			parent.style.setProperty('overflow-y', entry.value, entry.priority);
+		} else {
+			parent.style.removeProperty('overflow-y');
+		}
+		zoomedParents.delete(parent);
+	};
+
+	const claimParentOverflow = (parent: HTMLElement | null) => {
+		if (!parent) {
+			return;
+		}
+		let entry = zoomedParents.get(parent);
+		if (!entry) {
+			entry = {
+				value: parent.style.getPropertyValue('overflow-y'),
+				priority: parent.style.getPropertyPriority('overflow-y'),
+				refCount: 0
+			};
+			zoomedParents.set(parent, entry);
+		}
+		entry.refCount++;
+		parent.style.setProperty('overflow-y', 'auto', 'important');
+	};
 
 	const reset = () => {
 		for (const [element, original] of zoomedElements) {
@@ -16,6 +64,7 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 			} else {
 				element.style.removeProperty('zoom');
 			}
+			releaseParentOverflow(original.parent);
 		}
 		zoomedElements.clear();
 	};
@@ -47,8 +96,9 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 
 		event.preventDefault();
 		event.stopImmediatePropagation();
-		for (const element of zoomedElements.keys()) {
+		for (const [element, entry] of zoomedElements) {
 			if (!element.isConnected) {
+				releaseParentOverflow(entry.parent);
 				zoomedElements.delete(element);
 			}
 		}
@@ -60,12 +110,14 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 				value: target.style.getPropertyValue('zoom'),
 				priority: target.style.getPropertyPriority('zoom'),
 				base: Number.parseFloat(computedZoom) || 1,
-				factor: 1
+				factor: 1,
+				parent: target.parentElement
 			};
 			zoomedElements.set(target, original);
 		}
 
 		const delta = event.deltaMode === 0 ? event.deltaY / 100 : event.deltaY;
+		const previousFactor = original.factor;
 		original.factor = Math.round(Math.max(0.5, Math.min(3, original.factor - Math.max(-1, Math.min(1, delta)) * 0.1)) * 1000) / 1000;
 		if (original.factor === 1) {
 			if (original.value) {
@@ -73,9 +125,15 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 			} else {
 				target.style.removeProperty('zoom');
 			}
+			if (previousFactor !== 1) {
+				releaseParentOverflow(original.parent);
+			}
 			zoomedElements.delete(target);
 		} else {
 			target.style.setProperty('zoom', String(original.base * original.factor), 'important');
+			if (previousFactor === 1) {
+				claimParentOverflow(original.parent);
+			}
 		}
 	};
 
