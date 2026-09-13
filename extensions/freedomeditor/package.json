@@ -1,0 +1,63 @@
+{
+	"name": "freedomeditor",
+	"displayName": "FreedomEditor Studio",
+	"description": "Coding themes, native layout controls, and personal customization for FreedomEditor.",
+	"publisher": "hrithikraj1999",
+	"version": "0.1.0",
+	"license": "MIT",
+	"engines": { "vscode": "^1.100.0" },
+	"categories": ["Themes", "Other"],
+	"main": "./extension.cjs",
+	"activationEvents": ["onStartupFinished"],
+	"extensionKind": ["ui"],
+	"capabilities": { "untrustedWorkspaces": { "supported": true } },
+	"contributes": {
+		"commands": [
+			{ "command": "freedomeditor.customize", "title": "Customize Editor", "category": "FreedomEditor", "icon": "$(settings-gear)" },
+			{ "command": "freedomeditor.layout", "title": "Choose Coding Layout", "category": "FreedomEditor", "icon": "$(layout)" },
+			{ "command": "freedomeditor.updates", "title": "Open Releases", "category": "FreedomEditor", "icon": "$(cloud-download)" }
+		],
+		"themes": [
+			{ "label": "Freedom Graphite", "uiTheme": "vs-dark", "path": "./themes/graphite.json" },
+			{ "label": "Freedom Paper", "uiTheme": "vs", "path": "./themes/paper.json" }
+		],
+		"configurationDefaults": {
+			"workbench.colorTheme": "Freedom Graphite",
+			"workbench.preferredDarkColorTheme": "Freedom Graphite",
+			"workbench.preferredLightColorTheme": "Freedom Paper",
+			"window.autoDetectColorScheme": true,
+			"workbench.iconTheme": "material-icon-theme",
+			"workbench.startupEditor": "none",
+			"workbench.activityBar.location": "top",
+			"workbench.secondarySideBar.defaultVisibility": "visible",
+			"window.commandCenter": true,
+			"workbench.editor.tabSizing": "shrink",
+			"workbench.tree.indent": 16,
+			"editor.fontFamily": "'Cascadia Code', 'Cascadia Mono', Consolas, monospace",
+			"editor.fontSize": 14,
+			"editor.lineHeight": 22,
+			"editor.fontLigatures": true,
+			"editor.minimap.enabled": false,
+			"editor.stickyScroll.enabled": true,
+			"editor.bracketPairColorization.enabled": true,
+			"editor.guides.bracketPairs": "active",
+			"editor.renderWhitespace": "selection",
+			"editor.smoothScrolling": true,
+			"editor.cursorSmoothCaretAnimation": "explicit",
+			"editor.linkedEditing": true,
+			"breadcrumbs.enabled": true,
+			"terminal.integrated.fontFamily": "'Cascadia Mono', Consolas, monospace",
+			"terminal.integrated.fontSize": 13,
+			"terminal.integrated.scrollback": 5000,
+			"telemetry.telemetryLevel": "off",
+			"[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+			"[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+			"[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+			"[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+			"[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+		},
+		"menus": {
+			"commandPalette": [{ "command": "freedomeditor.customize" }]
+		}
+	}
+}

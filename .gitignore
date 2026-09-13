@@ -54,3 +54,7 @@ dist
 .v[0-9]*/
 # Local agent validation evidence
 .agent-validation/
+
+# FreedomEditor private profiles, update state, downloads, and build output
+/.freedomeditor/
+/freedomeditor/releases/

@@ -267,6 +267,7 @@ export interface IWebview extends IDisposable {
 
 	focus(): void;
 	reload(): void;
+	resetLocalZoom(): void;
 
 	showFind(animated?: boolean): void;
 	hideFind(animated?: boolean): void;

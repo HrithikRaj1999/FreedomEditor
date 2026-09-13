@@ -76,6 +76,8 @@ export type ToWebviewMessage = {
 		location: string | undefined;
 	};
 	'set-confirm-before-close': string;
+	'set-local-mouse-wheel-zoom': boolean;
+	'reset-local-zoom': void;
 	'set-context-menu-visible': { visible: boolean };
 	'initial-scroll-position': number;
 	'content': UpdateContentEvent;

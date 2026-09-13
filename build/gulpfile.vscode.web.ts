@@ -83,6 +83,7 @@ export const vscodeWebResourceIncludes = [
 
 	// Webview
 	'out-build/vs/workbench/contrib/webview/browser/pre/*.{js,html}',
+	'out-build/vs/base/browser/elementZoom.js',
 
 	// Tree Sitter highlights
 	'out-build/vs/editor/common/languages/highlights/*.scm',

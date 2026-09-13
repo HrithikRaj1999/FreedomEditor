@@ -167,7 +167,7 @@ export class WebviewElement extends Disposable implements IWebviewElement, Webvi
 	constructor(
 		initInfo: WebviewInitInfo,
 		protected readonly webviewThemeDataProvider: WebviewThemeDataProvider,
-		@IConfigurationService configurationService: IConfigurationService,
+		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IContextMenuService contextMenuService: IContextMenuService,
 		@INotificationService notificationService: INotificationService,
 		@IWorkbenchEnvironmentService private readonly _environmentService: IWorkbenchEnvironmentService,
@@ -314,6 +314,9 @@ export class WebviewElement extends Disposable implements IWebviewElement, Webvi
 		this._confirmBeforeClose = configurationService.getValue<string>('window.confirmBeforeClose');
 
 		this._register(configurationService.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('workbench.localMouseWheelZoom')) {
+				this._send('set-local-mouse-wheel-zoom', configurationService.getValue<boolean>('workbench.localMouseWheelZoom') !== false);
+			}
 			if (e.affectsConfiguration('window.confirmBeforeClose')) {
 				this._confirmBeforeClose = configurationService.getValue('window.confirmBeforeClose');
 				this._send('set-confirm-before-close', this._confirmBeforeClose);
@@ -634,6 +637,10 @@ export class WebviewElement extends Disposable implements IWebviewElement, Webvi
 		this.reload();
 	}
 
+	public resetLocalZoom(): void {
+		this._send('reset-local-zoom', undefined);
+	}
+
 	public setHtml(html: string) {
 		this.doUpdateContent({ ...this._content, html });
 		this._onDidHtmlChange.fire(html);
@@ -701,6 +708,7 @@ export class WebviewElement extends Disposable implements IWebviewElement, Webvi
 		const screenReader = this._accessibilityService.isScreenReaderOptimized();
 
 		this._send('styles', { styles, activeTheme, themeId, themeLabel, reduceMotion, screenReader });
+		this._send('set-local-mouse-wheel-zoom', this.configurationService.getValue<boolean>('workbench.localMouseWheelZoom') !== false);
 	}
 
 

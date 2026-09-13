@@ -1,0 +1,16 @@
+{
+	"name": "freedomeditor-maintenance",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"engines": { "node": ">=22" },
+	"scripts": {
+		"test": "node --test ../scripts/freedomeditor-sync.test.mjs ../extensions/freedomeditor/extension.test.cjs",
+		"brand": "node ../scripts/freedomeditor-brand.mjs"
+	},
+	"dependencies": {
+		"@resvg/resvg-js": "^2.6.2",
+		"jsonc-parser": "^3.3.1",
+		"semver": "^7.7.2"
+	}
+}
