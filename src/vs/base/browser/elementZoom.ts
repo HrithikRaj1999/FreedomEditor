@@ -1,4 +1,5 @@
 import type { IDisposable } from '../common/lifecycle.js';
+import { listViewZoomRelayoutRegistry } from './ui/list/listView.js';
 
 export interface IElementZoomController extends IDisposable {
 	reset(): void;
@@ -65,6 +66,7 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 				element.style.removeProperty('zoom');
 			}
 			releaseParentOverflow(original.parent);
+			listViewZoomRelayoutRegistry.get(element)?.();
 		}
 		zoomedElements.clear();
 	};
@@ -135,6 +137,11 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 				claimParentOverflow(original.parent);
 			}
 		}
+		// Widgets that manage their own virtualized scrolling (currently only
+		// the base List, see listView.ts) need to know their zoom-compensated
+		// content box changed so they can relayout; see the registry's doc
+		// comment in listView.ts for the full rationale.
+		listViewZoomRelayoutRegistry.get(target)?.();
 	};
 
 	container.addEventListener('wheel', onWheel, options);

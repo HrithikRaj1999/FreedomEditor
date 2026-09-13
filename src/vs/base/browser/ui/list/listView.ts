@@ -295,6 +295,29 @@ export interface IListView<T> extends ISpliceable<T>, IDisposable {
  * @remarks It is a low-level widget, not meant to be used directly. Refer to the
  * List widget instead.
  */
+
+/**
+ * DOM nodes that back a {@link ListView} register themselves here so external
+ * code that changes their visual size outside the normal `layout()` call path
+ * can ask the owning list to re-measure its own content box and relayout.
+ *
+ * The concrete motivating case is FreedomEditor's local Ctrl+wheel zoom
+ * (see `vs/base/browser/elementZoom.ts`), which applies a CSS `zoom` directly
+ * to `.monaco-list`. `zoom` keeps the element's outer footprint matching its
+ * ancestor (so it never visually overflows), but it makes the element's own
+ * `offsetHeight`/`clientHeight` shrink to a "zoom-compensated" value when read
+ * from inside the zoomed subtree. Without an explicit relayout, the list keeps
+ * using its last known (pre-zoom) viewport height for its virtualization math,
+ * so rows keep being positioned/rendered as if nothing changed while they are
+ * now painted larger — pushing the tail of the list out of reach and making
+ * the internal scrollbar falsely report that it has reached the end.
+ * Calling `layout()` with no arguments makes the list re-measure via
+ * `getContentHeight`/`getContentWidth`, which naturally picks up the
+ * zoom-compensated size and keeps virtualization consistent with what is
+ * actually rendered on screen.
+ */
+export const listViewZoomRelayoutRegistry = new WeakMap<HTMLElement, () => void>();
+
 export class ListView<T> implements IListView<T> {
 
 	private static InstanceCount = 0;
@@ -481,6 +504,9 @@ export class ListView<T> implements IListView<T> {
 		if (options.scrollToActiveElement) {
 			this._setupFocusObserver(container);
 		}
+
+		listViewZoomRelayoutRegistry.set(this.domNode, () => this.layout());
+		this.disposables.add(toDisposable(() => listViewZoomRelayoutRegistry.delete(this.domNode)));
 	}
 
 	private _setupFocusObserver(container: HTMLElement): void {

@@ -5,7 +5,7 @@
 
 import assert from 'assert';
 import { CachedListVirtualDelegate, IListRenderer, IListVirtualDelegate } from '../../../../browser/ui/list/list.js';
-import { ListView } from '../../../../browser/ui/list/listView.js';
+import { ListView, listViewZoomRelayoutRegistry } from '../../../../browser/ui/list/listView.js';
 import { range } from '../../../../common/arrays.js';
 import { IRange } from '../../../../common/range.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../common/utils.js';
@@ -40,6 +40,55 @@ suite('ListView', function () {
 		assert.strictEqual(templatesCount, 10, 'some templates have been allocated');
 		listView.dispose();
 		assert.strictEqual(templatesCount, 0, 'all templates have been disposed');
+	});
+
+	test('registers and unregisters a zoom relayout hook for local zoom (see elementZoom.ts)', function () {
+		const element = document.createElement('div');
+		element.style.height = '200px';
+		element.style.width = '200px';
+		document.body.appendChild(element);
+
+		const delegate: IListVirtualDelegate<number> = {
+			getHeight() { return 20; },
+			getTemplateId() { return 'template'; }
+		};
+		const renderer: IListRenderer<number, void> = {
+			templateId: 'template',
+			renderTemplate() { },
+			renderElement() { },
+			disposeTemplate() { }
+		};
+
+		const listView = new ListView<number>(element, delegate, [renderer]);
+		listView.layout(200, 200);
+		listView.splice(0, 0, range(100));
+
+		// list.css normally makes `.monaco-list` resolve to `height: 100%` of
+		// its container; this unit test doesn't load that stylesheet, so pin
+		// the same effective size explicitly to keep the scenario realistic.
+		listView.domNode.style.height = '200px';
+
+		const relayout = listViewZoomRelayoutRegistry.get(listView.domNode);
+		assert.ok(relayout, 'the list registers itself so local zoom can trigger a relayout');
+		relayout!();
+		assert.strictEqual(listView.renderHeight, 200);
+
+		// Simulate what local zoom does to a `.monaco-list`: its own
+		// offsetHeight/clientHeight shrinks to a zoom-compensated value while
+		// its outer footprint (as seen by its parent) stays the same size.
+		// Calling the registered hook must make the list re-measure and pick
+		// up that new value, instead of continuing to use the stale one.
+		listView.domNode.style.setProperty('height', '150px', 'important');
+		relayout!();
+		assert.strictEqual(listView.renderHeight, 150, 'relayout re-measures the zoom-compensated content height');
+
+		listView.domNode.style.height = '200px';
+		relayout!();
+		assert.strictEqual(listView.renderHeight, 200, 'relayout picks the size back up once zoom is reset');
+
+		listView.dispose();
+		assert.strictEqual(listViewZoomRelayoutRegistry.get(listView.domNode), undefined, 'disposing the list unregisters the hook');
+		element.remove();
 	});
 
 	test('batches horizontal width measurements', function () {
