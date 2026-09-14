@@ -91,6 +91,57 @@ suite('ListView', function () {
 		element.remove();
 	});
 
+	test('compensates explicit layout(height, width) for local zoom applied to the list root', function () {
+		// This is the scenario that actually broke local zoom on virtualized
+		// lists such as the chat transcript: their *owner* (e.g. ChatWidget)
+		// keeps calling `layout(explicitHeight, explicitWidth)` with numbers
+		// computed from outer, on-screen layout math — on nearly every
+		// content change (typing, item height changes, autoscroll checks) —
+		// which previously clobbered any zoom-aware self-measurement with
+		// stale, unzoomed dimensions. `layout()` must therefore convert any
+		// explicit height/width it is given into the list's own local
+		// (zoom-compensated) coordinate space itself, so it stays correct no
+		// matter which unrelated code path re-triggers layout after a zoom
+		// change.
+		const element = document.createElement('div');
+		element.style.height = '200px';
+		element.style.width = '200px';
+		document.body.appendChild(element);
+
+		const delegate: IListVirtualDelegate<number> = {
+			getHeight() { return 20; },
+			getTemplateId() { return 'template'; }
+		};
+		const renderer: IListRenderer<number, void> = {
+			templateId: 'template',
+			renderTemplate() { },
+			renderElement() { },
+			disposeTemplate() { }
+		};
+
+		const listView = new ListView<number>(element, delegate, [renderer]);
+		listView.layout(200, 200);
+		listView.splice(0, 0, range(100));
+		assert.strictEqual(listView.renderHeight, 200);
+
+		// Zoom the list root itself, exactly like `elementZoom.ts` does.
+		listView.domNode.style.setProperty('zoom', '1.25', 'important');
+
+		// An owner recomputing an explicit, outer-pixel content height keeps
+		// passing the same un-zoomed number: it has no idea local zoom exists.
+		listView.layout(200, 200);
+		assert.strictEqual(listView.renderHeight, 160, 'an explicit height is divided by the local zoom factor (200 / 1.25)');
+
+		// Resetting zoom (factor back to 1) and re-laying out with the same
+		// explicit numbers must restore the original, unscaled accounting.
+		listView.domNode.style.removeProperty('zoom');
+		listView.layout(200, 200);
+		assert.strictEqual(listView.renderHeight, 200, 'renderHeight is restored once zoom returns to 1');
+
+		listView.dispose();
+		element.remove();
+	});
+
 	test('batches horizontal width measurements', function () {
 		const element = document.createElement('div');
 		element.style.height = '100px';

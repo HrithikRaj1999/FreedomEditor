@@ -911,9 +911,36 @@ export class ListView<T> implements IListView<T> {
 		return this.rangeMap.indexAfter(position);
 	}
 
+	/**
+	 * The explicit `height`/`width` passed to {@link layout} by an owner (for
+	 * example `ChatWidget`, which repeatedly recomputes an explicit content
+	 * height for its transcript list on nearly every interaction: typing,
+	 * item-height changes, autoscroll checks, etc.) is computed in *outer*,
+	 * on-screen pixels — the box's footprint as its own parent sees it, which
+	 * CSS `zoom` deliberately leaves unchanged.
+	 *
+	 * This list's internal virtualization math (row positions, viewport
+	 * render range, max scroll offset), however, must be expressed in the
+	 * *local* coordinate space inside the zoomed element, i.e. the same space
+	 * `offsetHeight`/`clientHeight` report from within it. Local zoom
+	 * (`vs/base/browser/elementZoom.ts`) can apply directly to a `.monaco-list`
+	 * root, in which case local units are outer units divided by the zoom
+	 * factor. Without this conversion, an owner's very next explicit
+	 * `layout(height, width)` call — which happens on almost any list content
+	 * change — would silently overwrite the correct zoom-compensated sizing
+	 * with stale, unzoomed numbers, making the tail of the list unreachable
+	 * even though the list had briefly relaid out correctly right after the
+	 * zoom gesture itself.
+	 */
+	private getLocalZoomFactor(): number {
+		const zoom = Number.parseFloat(getWindow(this.domNode).getComputedStyle(this.domNode).zoom);
+		return zoom > 0 ? zoom : 1;
+	}
+
 	layout(height?: number, width?: number): void {
+		const zoom = this.getLocalZoomFactor();
 		const scrollDimensions: INewScrollDimensions = {
-			height: typeof height === 'number' ? height : getContentHeight(this.domNode)
+			height: typeof height === 'number' ? height / zoom : getContentHeight(this.domNode)
 		};
 
 		if (this.scrollableElementUpdateDisposable) {
@@ -925,7 +952,7 @@ export class ListView<T> implements IListView<T> {
 		this.scrollableElement.setScrollDimensions(scrollDimensions);
 
 		if (typeof width !== 'undefined') {
-			this.renderWidth = width;
+			this.renderWidth = typeof width === 'number' ? width / zoom : width;
 
 			if (this.supportDynamicHeights) {
 				this._rerender(this.scrollTop, this.renderHeight);
@@ -934,7 +961,7 @@ export class ListView<T> implements IListView<T> {
 
 		if (this.horizontalScrolling) {
 			this.scrollableElement.setScrollDimensions({
-				width: typeof width === 'number' ? width : getContentWidth(this.domNode)
+				width: typeof width === 'number' ? width / zoom : getContentWidth(this.domNode)
 			});
 
 			const scrollPos = this.scrollableElement.getScrollPosition();
