@@ -1,8 +1,57 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import type { IDisposable } from '../common/lifecycle.js';
-import { listViewZoomRelayoutRegistry } from './ui/list/listView.js';
 
 export interface IElementZoomController extends IDisposable {
 	reset(): void;
+}
+
+/**
+ * Widgets that lay themselves out manually register themselves here, keyed by
+ * the DOM node local zoom can target, so that changing that node's CSS `zoom`
+ * outside of their normal `layout()` call path can ask them to re-measure and
+ * relayout.
+ *
+ * `zoom` scales an element's rendered box *without* changing the box its own
+ * parent reserved for it, so a fixed-layout widget (list, editor, ...) that
+ * keeps sizing itself in outer, on-screen pixels ends up rendering larger than
+ * the ancestor that hosts it and gets clipped: its scrollbars, its overlay
+ * widgets (such as the editor find widget) and its caret can all end up
+ * painted outside the visible area with no way to reach them. Widgets avoid
+ * that by converting the sizes they are given into their own *local*
+ * (zoom-compensated) coordinate space - see {@link getElementZoomFactor} - and
+ * by relaying out through this registry whenever the zoom factor changes.
+ *
+ * NOTE: this module is also served standalone to webviews (see
+ * `webviewProtocolProvider.ts`, which maps `/elementZoom.js` to this file and
+ * nothing else), so it must not take any runtime imports on other modules.
+ */
+export const zoomRelayoutRegistry = new WeakMap<HTMLElement, () => void>();
+
+/**
+ * The CSS `zoom` factor applied to `element` itself, ignoring any zoom
+ * inherited from its ancestors.
+ *
+ * Self-measuring geometry APIs (`offsetWidth`/`offsetHeight`,
+ * `clientWidth`/`clientHeight`, `ResizeObserver`'s `contentRect`) already
+ * report values in the element's local, zoom-compensated coordinate space,
+ * while sizes computed by an owner living outside the zoomed element are in
+ * outer, on-screen pixels. Dividing the latter by this factor converts them
+ * into the same local space.
+ */
+export function getElementZoomFactor(element: HTMLElement | null | undefined): number {
+	if (!element) {
+		return 1;
+	}
+	const targetWindow = element.ownerDocument.defaultView;
+	if (!targetWindow) {
+		return 1;
+	}
+	const zoom = Number.parseFloat(targetWindow.getComputedStyle(element).zoom);
+	return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
 }
 
 export function installElementZoom(container: HTMLElement, isEnabled: () => boolean = () => true): IElementZoomController {
@@ -66,7 +115,7 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 				element.style.removeProperty('zoom');
 			}
 			releaseParentOverflow(original.parent);
-			listViewZoomRelayoutRegistry.get(element)?.();
+			zoomRelayoutRegistry.get(element)?.();
 		}
 		zoomedElements.clear();
 	};
@@ -137,11 +186,10 @@ export function installElementZoom(container: HTMLElement, isEnabled: () => bool
 				claimParentOverflow(original.parent);
 			}
 		}
-		// Widgets that manage their own virtualized scrolling (currently only
-		// the base List, see listView.ts) need to know their zoom-compensated
-		// content box changed so they can relayout; see the registry's doc
-		// comment in listView.ts for the full rationale.
-		listViewZoomRelayoutRegistry.get(target)?.();
+		// Widgets that manage their own layout need to know their
+		// zoom-compensated content box changed so they can relayout; see the
+		// registry's doc comment above for the full rationale.
+		zoomRelayoutRegistry.get(target)?.();
 	};
 
 	container.addEventListener('wheel', onWheel, options);

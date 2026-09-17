@@ -83,22 +83,36 @@ export function createEditorPagePosition(editorViewDomNode: HTMLElement): Editor
 	return new EditorPagePosition(editorPos.left, editorPos.top, editorPos.width, editorPos.height);
 }
 
+/**
+ * The factor between the editor's on-screen (page) coordinates and its own
+ * internal coordinates.
+ *
+ * The editor's page position is read from the DOM using `getBoundingClientRect()`,
+ * which reports the actual rendered dimensions, while `offsetWidth`/`offsetHeight`
+ * report the unscaled ones. Their ratio therefore captures any scaling applied to
+ * the editor, be it a `transform: scale()` on an ancestor or a CSS `zoom` on the
+ * `.monaco-editor` node itself (FreedomEditor's local Ctrl+wheel zoom, see
+ * `vs/base/browser/elementZoom.ts`).
+ *
+ * Page coordinates must be divided by this factor to become editor-internal
+ * coordinates, and editor-internal distances must be multiplied by it to become
+ * page distances.
+ */
+export function getEditorScale(editorViewDomNode: HTMLElement, editorPagePosition: EditorPagePosition): { x: number; y: number } {
+	return {
+		x: editorViewDomNode.offsetWidth > 0 ? editorPagePosition.width / editorViewDomNode.offsetWidth : 1,
+		y: editorViewDomNode.offsetHeight > 0 ? editorPagePosition.height / editorViewDomNode.offsetHeight : 1
+	};
+}
+
 export function createCoordinatesRelativeToEditor(editorViewDomNode: HTMLElement, editorPagePosition: EditorPagePosition, pos: PageCoordinates) {
-	// The editor's page position is read from the DOM using getBoundingClientRect().
-	//
-	// getBoundingClientRect() returns the actual dimensions, while offsetWidth and offsetHeight
-	// reflect the unscaled size. We can use this difference to detect a transform:scale()
-	// and we will apply the transformation in inverse to get mouse coordinates that make sense inside the editor.
-	//
 	// This could be expanded to cover rotation as well maybe by walking the DOM up from `editorViewDomNode`
 	// and computing the effective transformation matrix using getComputedStyle(element).transform.
-	//
-	const scaleX = editorPagePosition.width / editorViewDomNode.offsetWidth;
-	const scaleY = editorPagePosition.height / editorViewDomNode.offsetHeight;
+	const scale = getEditorScale(editorViewDomNode, editorPagePosition);
 
-	// Adjust mouse offsets if editor appears to be scaled via transforms
-	const relativeX = (pos.x - editorPagePosition.x) / scaleX;
-	const relativeY = (pos.y - editorPagePosition.y) / scaleY;
+	// Adjust mouse offsets if the editor appears to be scaled
+	const relativeX = (pos.x - editorPagePosition.x) / scale.x;
+	const relativeY = (pos.y - editorPagePosition.y) / scale.y;
 	return new CoordinatesRelativeToEditor(relativeX, relativeY);
 }
 

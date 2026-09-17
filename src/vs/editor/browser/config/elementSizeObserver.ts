@@ -7,6 +7,7 @@ import { Disposable } from '../../../base/common/lifecycle.js';
 import { IDimension } from '../../common/core/2d/dimension.js';
 import { Emitter, Event } from '../../../base/common/event.js';
 import { getWindow, scheduleAtNextAnimationFrame } from '../../../base/browser/dom.js';
+import { getElementZoomFactor } from '../../../base/browser/elementZoom.js';
 
 export class ElementSizeObserver extends Disposable {
 
@@ -17,6 +18,19 @@ export class ElementSizeObserver extends Disposable {
 	private _width: number;
 	private _height: number;
 	private _resizeObserver: ResizeObserver | null;
+	/**
+	 * The element that local zoom (`vs/base/browser/elementZoom.ts`) can apply a
+	 * CSS `zoom` to, when it is not the observed reference element itself. For
+	 * the code editor this is the `.monaco-editor` node, which lives *inside*
+	 * the observed container. See {@link _localZoomFactor}.
+	 */
+	private _zoomDomElement: HTMLElement | null = null;
+	/**
+	 * The most recent sizing input, replayed whenever the local zoom factor
+	 * changes so that switching zoom levels never silently changes *how* the
+	 * widget is sized (explicitly by its owner vs. measured from the container).
+	 */
+	private _lastDimension: IDimension | undefined;
 
 	constructor(referenceDomElement: HTMLElement | null, dimension: IDimension | undefined) {
 		super();
@@ -24,7 +38,52 @@ export class ElementSizeObserver extends Disposable {
 		this._width = -1;
 		this._height = -1;
 		this._resizeObserver = null;
+		this._lastDimension = dimension;
 		this.measureReferenceDomElement(false, dimension);
+	}
+
+	/**
+	 * Point the observer at the element that carries a local CSS `zoom`, so the
+	 * sizes it reports are expressed in that element's own coordinate space.
+	 */
+	public setZoomDomElement(zoomDomElement: HTMLElement | null): void {
+		if (this._zoomDomElement === zoomDomElement) {
+			return;
+		}
+		const previousZoom = this._localZoomFactor();
+		this._zoomDomElement = zoomDomElement;
+		if (this._localZoomFactor() !== previousZoom) {
+			this.remeasure();
+		}
+	}
+
+	/**
+	 * Re-apply the last observed sizing. Used when the local zoom factor changed
+	 * but the sizing input itself did not.
+	 */
+	public remeasure(): void {
+		if (this._store.isDisposed) {
+			return;
+		}
+		this.measureReferenceDomElement(true, this._lastDimension);
+	}
+
+	/**
+	 * Local zoom scales how large the observed widget *renders* without changing
+	 * the box its ancestor reserved for it. Everything we measure here — the
+	 * container's `clientWidth`/`clientHeight`, a `ResizeObserver` content rect,
+	 * or an explicit dimension computed by the widget's owner — is expressed in
+	 * that unchanged outer box. Feeding those numbers straight into the editor's
+	 * layout would make it lay out as if it had the full outer box available
+	 * while actually painting `zoom` times larger, so everything anchored to its
+	 * right/bottom edge (the vertical scrollbar, the minimap, the find widget)
+	 * and any caret past the fold would be rendered outside the visible area and
+	 * become unreachable. Dividing by the zoom factor converts them into the
+	 * zoomed element's local space, which makes its rendered footprint match the
+	 * outer box exactly again.
+	 */
+	private _localZoomFactor(): number {
+		return getElementZoomFactor(this._zoomDomElement);
 	}
 
 	public override dispose(): void {
@@ -95,6 +154,7 @@ export class ElementSizeObserver extends Disposable {
 	}
 
 	public observe(dimension?: IDimension): void {
+		this._lastDimension = dimension;
 		this.measureReferenceDomElement(true, dimension);
 	}
 
@@ -107,6 +167,11 @@ export class ElementSizeObserver extends Disposable {
 		} else if (this._referenceDomElement) {
 			observedWidth = this._referenceDomElement.clientWidth;
 			observedHeight = this._referenceDomElement.clientHeight;
+		}
+		const zoom = this._localZoomFactor();
+		if (zoom !== 1) {
+			observedWidth = observedWidth / zoom;
+			observedHeight = observedHeight / zoom;
 		}
 		observedWidth = Math.max(5, observedWidth);
 		observedHeight = Math.max(5, observedHeight);

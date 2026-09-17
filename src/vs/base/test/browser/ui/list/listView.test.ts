@@ -5,7 +5,8 @@
 
 import assert from 'assert';
 import { CachedListVirtualDelegate, IListRenderer, IListVirtualDelegate } from '../../../../browser/ui/list/list.js';
-import { ListView, listViewZoomRelayoutRegistry } from '../../../../browser/ui/list/listView.js';
+import { ListView } from '../../../../browser/ui/list/listView.js';
+import { zoomRelayoutRegistry } from '../../../../browser/elementZoom.js';
 import { range } from '../../../../common/arrays.js';
 import { IRange } from '../../../../common/range.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../common/utils.js';
@@ -68,7 +69,7 @@ suite('ListView', function () {
 		// the same effective size explicitly to keep the scenario realistic.
 		listView.domNode.style.height = '200px';
 
-		const relayout = listViewZoomRelayoutRegistry.get(listView.domNode);
+		const relayout = zoomRelayoutRegistry.get(listView.domNode);
 		assert.ok(relayout, 'the list registers itself so local zoom can trigger a relayout');
 		relayout!();
 		assert.strictEqual(listView.renderHeight, 200);
@@ -87,7 +88,7 @@ suite('ListView', function () {
 		assert.strictEqual(listView.renderHeight, 200, 'relayout picks the size back up once zoom is reset');
 
 		listView.dispose();
-		assert.strictEqual(listViewZoomRelayoutRegistry.get(listView.domNode), undefined, 'disposing the list unregisters the hook');
+		assert.strictEqual(zoomRelayoutRegistry.get(listView.domNode), undefined, 'disposing the list unregisters the hook');
 		element.remove();
 	});
 

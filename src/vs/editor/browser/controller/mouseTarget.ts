@@ -5,7 +5,7 @@
 
 import { IPointerHandlerHelper } from './mouseHandler.js';
 import { IMouseTargetContentEmptyData, IMouseTargetMarginData, IMouseTarget, IMouseTargetContentEmpty, IMouseTargetContentText, IMouseTargetContentWidget, IMouseTargetMargin, IMouseTargetOutsideEditor, IMouseTargetOverlayWidget, IMouseTargetScrollbar, IMouseTargetTextarea, IMouseTargetUnknown, IMouseTargetViewZone, IMouseTargetContentTextData, IMouseTargetViewZoneData, MouseTargetType } from '../editorBrowser.js';
-import { ClientCoordinates, EditorMouseEvent, EditorPagePosition, PageCoordinates, CoordinatesRelativeToEditor } from '../editorDom.js';
+import { ClientCoordinates, EditorMouseEvent, EditorPagePosition, PageCoordinates, CoordinatesRelativeToEditor, getEditorScale } from '../editorDom.js';
 import { PartFingerprint, PartFingerprints } from '../view/viewPart.js';
 import { ViewLine } from '../viewParts/viewLines/viewLine.js';
 import { IViewCursorRenderData } from '../viewParts/viewCursors/viewCursor.js';
@@ -965,7 +965,14 @@ export class MouseTargetFactory {
 
 		if (!isBelowLastLine) {
 			const lineCenteredVerticalOffset = Math.floor((lineStartVerticalOffset + lineEndVerticalOffset) / 2);
-			let adjustedPageY = request.pos.y + (lineCenteredVerticalOffset - request.mouseVerticalOffset);
+			// `lineCenteredVerticalOffset` and `mouseVerticalOffset` are editor-internal
+			// coordinates, while `request.pos` is in page coordinates. When the editor is
+			// scaled (`transform: scale()` on an ancestor, or a local CSS `zoom` on the
+			// `.monaco-editor` node) the two spaces differ, so the correction has to be
+			// scaled up before it can be applied to a page coordinate - otherwise the
+			// probe lands off the line center and the caret is placed on the wrong line.
+			const scaleY = getEditorScale(ctx.viewDomNode, request.editorPos).y;
+			let adjustedPageY = request.pos.y + (lineCenteredVerticalOffset - request.mouseVerticalOffset) * scaleY;
 
 			if (adjustedPageY <= request.editorPos.y) {
 				adjustedPageY = request.editorPos.y + 1;

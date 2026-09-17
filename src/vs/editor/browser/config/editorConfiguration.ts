@@ -178,6 +178,24 @@ export class EditorConfiguration extends Disposable implements IEditorConfigurat
 		this._containerObserver.observe(dimension);
 	}
 
+	/**
+	 * Tell the container observer which element carries a local CSS `zoom`
+	 * (`vs/base/browser/elementZoom.ts`), so the editor lays itself out in that
+	 * element's own coordinate space instead of rendering past the box its
+	 * container reserved for it. Pass `null` once that element goes away.
+	 */
+	public setZoomDomElement(zoomDomElement: HTMLElement | null): void {
+		this._containerObserver.setZoomDomElement(zoomDomElement);
+	}
+
+	/**
+	 * Recompute the layout after the local zoom factor changed, keeping whatever
+	 * sizing the editor was last given.
+	 */
+	public remeasureContainerForZoom(): void {
+		this._containerObserver.remeasure();
+	}
+
 	public setIsDominatedByLongLines(isDominatedByLongLines: boolean): void {
 		if (this._isDominatedByLongLines === isDominatedByLongLines) {
 			return;

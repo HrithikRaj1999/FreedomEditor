@@ -5,13 +5,14 @@
 
 import '../../services/contribution.js';
 import * as dom from '../../../../base/browser/dom.js';
+import { zoomRelayoutRegistry } from '../../../../base/browser/elementZoom.js';
 import { IKeyboardEvent } from '../../../../base/browser/keyboardEvent.js';
 import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
 import { Color } from '../../../../base/common/color.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { Emitter, EmitterOptions, Event, EventDeliveryQueue, createEventDeliveryQueue } from '../../../../base/common/event.js';
 import { hash } from '../../../../base/common/hash.js';
-import { Disposable, DisposableStore, IDisposable, dispose } from '../../../../base/common/lifecycle.js';
+import { Disposable, DisposableStore, IDisposable, dispose, toDisposable } from '../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../base/common/network.js';
 import './editor.css';
 import { applyFontInfo } from '../../config/domFontInfo.js';
@@ -236,6 +237,12 @@ export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeE
 	private readonly _overflowWidgetsDomNode: HTMLElement | undefined;
 	private readonly _id: number;
 	private readonly _configuration: IEditorConfiguration;
+	/**
+	 * Same object as {@link _configuration}, kept under its concrete browser
+	 * type so the DOM-specific local zoom hook can be used without leaking
+	 * `HTMLElement` into the common-layer `IEditorConfiguration` interface.
+	 */
+	private readonly _browserConfiguration: EditorConfiguration;
 	private _contributionsDisposable: IDisposable | undefined;
 
 	protected readonly _actions = new Map<string, editorCommon.IEditorAction>();
@@ -297,9 +304,10 @@ export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeE
 		this._decorationTypeSubtypes = {};
 		this._telemetryData = codeEditorWidgetOptions.telemetryData;
 
-		this._configuration = this._register(this._createConfiguration(codeEditorWidgetOptions.isSimpleWidget || false,
+		this._browserConfiguration = this._register(this._createConfiguration(codeEditorWidgetOptions.isSimpleWidget || false,
 			codeEditorWidgetOptions.contextMenuId ?? (codeEditorWidgetOptions.isSimpleWidget ? MenuId.SimpleEditorContext : MenuId.EditorContext),
 			options, accessibilityService));
+		this._configuration = this._browserConfiguration;
 		this._domElement.style?.setProperty('--editor-font-size', this._configuration.options.get(EditorOption.fontSize) + 'px');
 		this._register(this._configuration.onDidChange((e) => {
 			this._onDidChangeConfiguration.fire(e);
@@ -1888,7 +1896,21 @@ export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeE
 
 		const [view, hasRealView] = this._createView(viewModel);
 		if (hasRealView) {
-			this._domElement.appendChild(view.domNode.domNode);
+			const viewDomNode = view.domNode.domNode;
+			this._domElement.appendChild(viewDomNode);
+
+			// `.monaco-editor` is what FreedomEditor's local Ctrl+wheel zoom
+			// targets (see `vs/base/browser/elementZoom.ts`). Lay the editor out
+			// in that node's own, zoom-compensated coordinate space and relayout
+			// whenever the zoom factor changes, so the editor keeps rendering
+			// inside the box its container reserved for it instead of spilling
+			// out of it and clipping its scrollbar, find widget and caret.
+			this._browserConfiguration.setZoomDomElement(viewDomNode);
+			zoomRelayoutRegistry.set(viewDomNode, () => this._browserConfiguration.remeasureContainerForZoom());
+			listenersToRemove.push(toDisposable(() => {
+				zoomRelayoutRegistry.delete(viewDomNode);
+				this._browserConfiguration.setZoomDomElement(null);
+			}));
 
 			let keys = Object.keys(this._contentWidgets);
 			for (let i = 0, len = keys.length; i < len; i++) {

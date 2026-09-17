@@ -1,5 +1,10 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import assert from 'assert';
-import { installElementZoom, type IElementZoomController } from '../../browser/elementZoom.js';
+import { getElementZoomFactor, installElementZoom, zoomRelayoutRegistry, type IElementZoomController } from '../../browser/elementZoom.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../common/utils.js';
 
 suite('Local Element Zoom', () => {
@@ -142,5 +147,38 @@ suite('Local Element Zoom', () => {
 		controller.dispose();
 		const event = wheel(target);
 		assert.deepStrictEqual([target.style.zoom, event.defaultPrevented], ['', false]);
+	});
+
+	test('reports the element\'s own zoom factor, ignoring inherited zoom', () => {
+		assert.strictEqual(getElementZoomFactor(target), 1, 'unzoomed elements report 1');
+		assert.strictEqual(getElementZoomFactor(null), 1, 'missing elements report 1');
+
+		container.style.setProperty('zoom', '3', 'important');
+		assert.strictEqual(getElementZoomFactor(target), 1, 'inherited zoom is not counted');
+
+		target.style.setProperty('zoom', '2', 'important');
+		assert.strictEqual(getElementZoomFactor(target), 2);
+
+		container.style.removeProperty('zoom');
+		target.style.removeProperty('zoom');
+	});
+
+	test('asks fixed-layout widgets to relayout whenever their zoom changes', () => {
+		// Both `.monaco-list` and `.monaco-editor` size themselves manually, so
+		// they must be told to re-measure in their new local coordinate space -
+		// otherwise they keep rendering past the box their container reserved
+		// for them and clip their own scrollbar, find widget and caret.
+		for (const className of ['monaco-editor', 'monaco-list']) {
+			target.className = className;
+			const seen: number[] = [];
+			zoomRelayoutRegistry.set(target, () => seen.push(getElementZoomFactor(target)));
+
+			wheel(target.children[0]);
+			wheel(target.children[0]);
+			controller.reset();
+
+			assert.deepStrictEqual(seen, [1.1, 1.2, 1], `${className} relayouts on every zoom change and on reset`);
+			zoomRelayoutRegistry.delete(target);
+		}
 	});
 });
